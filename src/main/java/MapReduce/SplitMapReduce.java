@@ -24,18 +24,18 @@ import org.apache.hadoop.util.ToolRunner;
 public class SplitMapReduce {
     public static final Pattern HEAD_PATTERN = Pattern.compile("^(\\[){2}.*(\\]){2}");
 
-    public static class SplitMapper extends Mapper<LongWritable, Text, Text, Text> {
+    public static class SplitMapper extends Mapper<LongWritable, Text, Text, Integer> {
         public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
             List<Text> allTitles = new ArrayList<Text>();
             Matcher m = HEAD_PATTERN.matcher(line);
             while (m.find()) {
-                allTitles.add(new Text(m.group()));
+                allTitles.add(new Text(m.group(0)));
             }
             String[] allContent = HEAD_PATTERN.split(line);
             for (int i = 0; i < allTitles.size(); i++) {
-                Text contentValue = new Text(allContent[i]);
-                context.write(allTitles.get(i), contentValue);
+                //Text contentValue = new Text(allContent[i]);
+                context.write(allTitles.get(i), 1);
             }
         }
     }
@@ -45,15 +45,16 @@ public class SplitMapReduce {
             context.write(word, null);
         }
     }
+
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf, "Title Extraction");
         job.setJarByClass(SplitMapReduce.class);
-        job.setMapperClass(SplitMapper.class);
+        job.setMapperClass(SplitMapReduce.SplitMapper.class);
         job.setCombinerClass(SplitMapReduce.SplitReducer.class);
         job.setReducerClass(SplitMapReduce.SplitReducer.class);
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(null);
+        job.setOutputValueClass(Text.class);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);

@@ -1,3 +1,8 @@
+MapReduce/SplitMapReduce$SplitMapper.class
+MapReduce/SplitMapReduce.class
 MapReduce/TestMapReduce$IntSumReducer.class
+MapReduce/TFIDFMapReduce.class
 MapReduce/TestMapReduce.class
+MapReduce/SplitMapReduce$SplitReducer.class
 MapReduce/TestMapReduce$TokenizerMapper.class
+MapReduce/WikiDocument.class

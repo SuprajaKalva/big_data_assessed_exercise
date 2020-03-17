@@ -1,1 +1,6 @@
-/home/molin/Documents/UoG-BD-MR/src/main/java/MapReduce/TestMapReduce.java
+/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/TextPreprocess.java
+/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/SplitMapReduce.java
+/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/TFIDFMapReduce.java
+/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/SplitDoc.java
+/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/TestMapReduce.java
+/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/WikiDocument.java
