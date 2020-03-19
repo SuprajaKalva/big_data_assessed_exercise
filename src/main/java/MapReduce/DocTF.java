@@ -20,7 +20,8 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 /**
- * @author Molin Liu Test Class for calculating document term frequency.
+ * @author Molin Liu
+ * Test Class for calculating document term frequency.
  */
 public class DocTF {
     /**

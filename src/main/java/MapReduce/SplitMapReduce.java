@@ -22,10 +22,23 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
+/**
+ * The type Split map reduce.
+ */
 public class SplitMapReduce {
+    /**
+     * The constant HEAD_PATTERN.
+     */
     public static final Pattern HEAD_PATTERN = Pattern.compile("^(\\[){2}.*(\\]){2}");
+    /**
+     * The constant articlePattern.
+     */
     public static final Pattern articlePattern = Pattern.compile("\\[{2}.*\\].*");
 
+    /**
+     * The type Split mapper.
+     * TODO: The title extraction will not work well in some scenarios.
+     */
     public static class SplitMapper extends Mapper<LongWritable, Text, Text, Text> {
         public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
@@ -41,6 +54,9 @@ public class SplitMapReduce {
         }
     }
 
+    /**
+     * The type Split combiner.
+     */
     public static class SplitCombiner extends Reducer<Text, Text, Text, Text> {
         public void reduce(Text title, Iterable<Text> bodys, Context context) throws IOException, InterruptedException {
 
@@ -48,6 +64,9 @@ public class SplitMapReduce {
         }
     }
 
+    /**
+     * The type Split reducer.
+     */
     public static class SplitReducer extends Reducer<Text, Text, Text, IntWritable> {
         private IntWritable result = new IntWritable();
 
@@ -61,6 +80,12 @@ public class SplitMapReduce {
         }
     }
 
+    /**
+     * The entry point of application.
+     *
+     * @param args the input arguments
+     * @throws Exception the exception
+     */
     public static void main(String[] args) throws Exception {
         // Text preprocessing
         TextPreprocess tp = new TextPreprocess();

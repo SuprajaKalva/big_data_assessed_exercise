@@ -30,7 +30,7 @@ public class TextPreprocess {
      * Instantiates a new Text preprocess.
      */
     public TextPreprocess(){
-        readStopWordFile("/home/molin/Documents/big_data_assessed_exercise/src/main/resources/stopword-list.txt");
+        readStopWordFile("src/main/resources/stopword-list.txt");
     }
 
     /**
@@ -49,7 +49,6 @@ public class TextPreprocess {
 
     /**
      * Extract .tar file.
-     *
      * @param filePath the file path
      */
     public static void textPreprocess(String filePath) {
@@ -81,7 +80,6 @@ public class TextPreprocess {
         File file = new File(filePath);
         File temp = File.createTempFile("file", ".txt", file.getParentFile());
         String charset = "UTF-8";
-        String delete = "medical_data";
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), charset));
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(temp), charset));
         String currentLine;
@@ -93,6 +91,7 @@ public class TextPreprocess {
 
             // Remove non-ASCII characters
             currentLine = currentLine.replaceAll("[^A-Za-z0-9\\[\\]]"," ");
+
             // Remove stopwords
             Matcher titleMatcher = titlePattern.matcher(currentLine);
             List<String> allWords = new ArrayList<String>(Arrays.asList(currentLine.toLowerCase().split(" ")));
@@ -107,6 +106,8 @@ public class TextPreprocess {
                 currentLine = String.join(" ", allWords);
                 currentLine = '\n'+currentLine;
             }
+
+            // Remove extra space.
             currentLine = currentLine.replaceAll(" +", " ");
             writer.print(currentLine);
         }
