@@ -20,13 +20,11 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 /**
- * @author Molin Liu
- * Test Class for calculating document term frequency.
+ * @author Molin Liu Test Class for calculating document term frequency.
  */
 public class DocTF {
     /**
-     * The constant HEAD_PATTERN.
-     * To recognize titles in the file.
+     * The constant HEAD_PATTERN. To recognize titles in the file.
      */
     public static final Pattern HEAD_PATTERN = Pattern.compile("^(\\[){2}.*(\\]){2}");
 
@@ -73,7 +71,7 @@ public class DocTF {
      * @param args the args
      * @throws Exception the exception
      */
-    public void run(String[] args) throws Exception {
+    public static void run(String[] args) throws Exception {
         TextPreprocess tp = new TextPreprocess();
         File temp_file = tp.textCleaner(args[0]);
         Configuration conf = new Configuration();
@@ -90,5 +88,9 @@ public class DocTF {
         FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+
+    public static void main(String[] args) throws Exception {
+        run(args);
     }
 }
