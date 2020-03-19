@@ -95,20 +95,24 @@ public class TextPreprocess {
             // Remove stopwords
             Matcher titleMatcher = titlePattern.matcher(currentLine);
             List<String> allWords = new ArrayList<String>(Arrays.asList(currentLine.toLowerCase().split(" ")));
+            // If this line is header
             if(!titleMatcher.find()){
                 allWords.removeAll(stopWordList);
                 currentLine = String.join(" ", allWords);
                 currentLine = ' '+currentLine+' ';
+                currentLine = currentLine.replaceAll("\\]\\]", "");
                 if(currentLine.equals("")){
                     continue;
                 }
             }else{
                 currentLine = String.join(" ", allWords);
                 currentLine = '\n'+currentLine;
+
             }
 
             // Remove extra space.
             currentLine = currentLine.replaceAll(" +", " ");
+
             writer.print(currentLine);
         }
         writer.close();
@@ -124,15 +128,11 @@ public class TextPreprocess {
      */
     public static void main(String[] args) throws Exception {
         long start = System.currentTimeMillis();
-
-
-        textCleaner("/home/molin/Documents/Data/input/sample.txt");
+        String testfile_PATH = "src/main/resources/sample.txt";
+        textCleaner(testfile_PATH);
         long end = System.currentTimeMillis();
         long timeElapsed = end - start;
         System.out.println("Elapsed time:"+timeElapsed/1000F);
-        // String testTarFile =
-        // "/home/molin/Documents/Data/input/20140615-wiki-en_000000.txt.gz";
-        // textPreprocess(testTarFile);
     }
 
 }

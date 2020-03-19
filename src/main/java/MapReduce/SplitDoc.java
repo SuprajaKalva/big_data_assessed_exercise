@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class SplitDoc {
-    public static final Pattern HEAD_PATTERN = Pattern.compile("^\\[{2}.*\\]{2}");
+    public static final Pattern HEAD_PATTERN = Pattern.compile("\\[{2}.*\\]{2}");
     public static final Pattern NONASCII = Pattern.compile("[^\\x20-\\x7e]");
     public static final Pattern articlePattern = Pattern.compile("\\[{2}.*\\].*");
 
@@ -23,11 +23,13 @@ public class SplitDoc {
             Matcher articleMatcher = articlePattern.matcher(data);
             Matcher titleMatcher = HEAD_PATTERN.matcher(data);
             Matcher nonasciiMatcher = NONASCII.matcher(data);
-
-            if (articleMatcher.find()) {
-                System.out.println(articleMatcher.group(0));
+            if (titleMatcher.find()){
+                String title = titleMatcher.group(0);
+                if (title.length()>50){
+                    counter+=1;
+                    System.out.println(title);
+                }
             }
-
         }
         System.out.println(counter);
     }
