@@ -1,8 +1,14 @@
 package MapReduce;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,10 +32,116 @@ import org.apache.hadoop.util.ToolRunner;
  * Test Class for calculating document term frequency.
  */
 public class DocTF {
+
     /**
-     * The constant HEAD_PATTERN. To recognize titles in the file.
+     * 1. Input files preprocessing stage
+     * Text Preprocessing Mapper
      */
-    public static final Pattern HEAD_PATTERN = Pattern.compile("^(\\[){2}.*(\\]){2}");
+    public static final Pattern HEAD_PATTERN = Pattern.compile("^\\[{2}.*\\]{2}");
+
+    /**
+     * Text Pre-processing Mapper Class
+     * Input type: gzip files
+     */
+    public static class TPMapper extends Mapper<LongWritable, Text, Text, Text>{
+        private static String temp_title;
+        private static List<String> stopWordList;
+        protected void setup(Context context)
+                throws IOException, InterruptedException{
+            try {
+                //BufferedReader fis = new BufferedReader(new FileReader(stopWordFile_PATH));
+                this.stopWordList = Files.readAllLines(Paths.get("src/main/resources/stopword-list.txt"));
+            } catch (IOException ioe) {
+                System.err.println("Exception while reading stop word file" + ioe.toString());
+            }
+        }
+        public void map(LongWritable offset, Text lineText, Context context)
+                throws IOException, InterruptedException{
+            String line = lineText.toString();
+            // Preprocess the input text file.
+            line = line.trim();
+            // Remove subtitle
+            line = line.replaceAll("={2}.*={2}", "");
+            // Remove non-ASCII characters
+            line = line.replaceAll("[^A-Za-z0-9\\[\\]]","");
+            Matcher titleMatcher = HEAD_PATTERN.matcher(line);
+            if(line.equals("")){
+                return;
+            }
+            // See if the current line is title:
+            if(!titleMatcher.find()){
+                // Remove extra space
+                line = line.replaceAll(" +", " ");
+                // Remove non-title ]] symbols.
+                // More detail refer to https://github.com/SuprajaKalva/big_data_assessed_exercise/issues/1
+                line = line.replaceAll("\\]\\]", "");
+
+                // Remove stopwords
+                List<String> allWords = new ArrayList<String>(Arrays.asList(line.toLowerCase().split(" ")));
+                allWords.removeAll(stopWordList);
+                line = String.join(" ", allWords);
+
+                // Construct key-value pair.
+                // Key: title of articles
+                // Value: chunk of body
+                context.write(new Text(temp_title), new Text(line));
+            }else{
+                // If it's title, simply set the current line to
+                // temp_title.
+                temp_title = line;
+            }
+        }
+    }
+
+    /**
+     * Text Pre-processing Reducer
+     * Concatenate all chunks belong to the same article.
+     */
+    public static class TPReducer extends Reducer<Text, Text, Text, Text>{
+
+        public void reduce(Text temp_title, Iterable<Text> bodys, Context context)
+                throws IOException, InterruptedException{
+            String article_body = "";
+            for(Text body: bodys){
+                if(article_body.equals("")){
+                    article_body += body.toString();
+                }else{
+                    article_body += " " + body.toString();
+                }
+            }
+            context.write(temp_title, new Text(article_body));
+        }
+    }
+
+    /**
+     * tpRun.
+     *
+     * @param args the args
+     * @throws Exception the exception
+     */
+    public static void tpRun(String [] args)
+            throws Exception{
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Title Extraction");
+        job.setJarByClass(DocTF.class);
+        job.setMapperClass(DocTF.TPMapper.class);
+        // job.setCombinerClass(SplitMapReduce.SplitReducer.class);
+        job.setReducerClass(DocTF.TPReducer.class);
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(Text.class);
+
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
+
+        // The input is a folder.
+        MultipleInputs.addInputPath(job, new Path("src/main/resources/Mockdata"), TextInputFormat.class);
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+
+    /**
+     * 2. Document term frequency stage
+     */
 
     /**
      * The type Doc tf mapper.
@@ -93,26 +205,37 @@ public class DocTF {
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 
-    public static void gzipRun(String [] args) throws Exception{
-
+    public static int gzipRun(String [] args) throws Exception{
+        String temp_path = args[1]+"/temp";
+        // Stage 1: Input Preprocessing
         Configuration conf = new Configuration();
-        Job job = Job.getInstance(conf, "Title Extraction");
-        job.setJarByClass(DocTF.class);
-        job.setMapperClass(DocTF.DocTFMapper.class);
+        Job job1 = Job.getInstance(conf, "Title Extraction");
+        job1.setJarByClass(DocTF.class);
+        job1.setMapperClass(TPMapper.class);
         // job.setCombinerClass(SplitMapReduce.SplitReducer.class);
-        job.setReducerClass(DocTF.DocTFReducer.class);
-        job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(IntWritable.class);
+        job1.setReducerClass(TPReducer.class);
+        //job1.setMapOutputKeyClass(Text.class);
+        //job1.setMapOutputValueClass(Text.class);
 
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(FloatWritable.class);
+        job1.setOutputKeyClass(Text.class);
+        job1.setOutputValueClass(Text.class);
         //FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
-        MultipleInputs.addInputPath(job, new Path("src/main/resources/Mockdata"), TextInputFormat.class);
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
-        System.exit(job.waitForCompletion(true) ? 0 : 1);
+        MultipleInputs.addInputPath(job1, new Path("src/main/resources/Mockdata_tiny"), TextInputFormat.class);
+        FileOutputFormat.setOutputPath(job1, new Path(temp_path));
+        job1.waitForCompletion(true);
+
+        // Stage 2: TF
+        Job job2 = Job.getInstance(conf, "TF");
+        job2.setJarByClass(DocTF.class);
+        job2.setMapperClass(DocTFMapper.class);
+        job2.setReducerClass(DocTFReducer.class);
+        job1.setOutputKeyClass(Text.class);
+        job1.setOutputValueClass(FloatWritable.class);
+        FileInputFormat.addInputPath(job2, new Path(args[1]));
+        return job2.waitForCompletion(true)? 0 : 1;
     }
 
     public static void main(String[] args) throws Exception {
-        run(args);
+        gzipRun(args);
     }
 }

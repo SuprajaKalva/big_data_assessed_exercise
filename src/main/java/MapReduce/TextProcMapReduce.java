@@ -62,7 +62,7 @@ public class TextProcMapReduce {
             // Remove subtitle
             line = line.replaceAll("={2}.*={2}", "");
             // Remove non-ASCII characters
-            line = line.replaceAll("[^A-Za-z0-9\\[\\]]"," ");
+            line = line.replaceAll("[^A-Za-z0-9\\[\\]]","");
             Matcher titleMatcher = titlePattern.matcher(line);
             if(line.equals("")){
                 return;
@@ -113,12 +113,12 @@ public class TextProcMapReduce {
     }
 
     /**
-     * Run.
+     * tpRun.
      *
      * @param args the args
      * @throws Exception the exception
      */
-    public static void run(String [] args)
+    public static void tpRun(String [] args)
             throws Exception{
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf, "Title Extraction");
@@ -146,6 +146,6 @@ public class TextProcMapReduce {
      */
     public static void main(String[] args)
             throws Exception{
-        run(args);
+        tpRun(args);
     }
 }
