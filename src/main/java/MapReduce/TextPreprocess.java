@@ -3,6 +3,7 @@ package MapReduce;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -10,11 +11,13 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 import static MapReduce.FileHandler.extractGZip;
 
 /**
  * Preprocess the text file before feed into MapReduce.
+ * TODO: Multi-thread unzip files.
  */
 public class TextPreprocess {
     /**
@@ -35,8 +38,8 @@ public class TextPreprocess {
 
     /**
      * Read from stopword file.
-     * 
-     * @param stopWordFile_PATH
+     *
+     * @param stopWordFile_PATH the stop word file path
      */
     public void readStopWordFile(String stopWordFile_PATH) {
         try {
@@ -49,6 +52,7 @@ public class TextPreprocess {
 
     /**
      * Extract .tar file.
+     *
      * @param filePath the file path
      */
     public static void textPreprocess(String filePath) {
@@ -60,6 +64,31 @@ public class TextPreprocess {
             // extractGZip(tarFile, )
         } catch (Exception ioe) {
             System.err.println("Exception while reading tar file" + filePath + " " + ioe.toString());
+        }
+    }
+
+    /**
+     * Unzip.
+     *
+     * @param gzip_path   the gzip path
+     * @param output_path the output path
+     */
+    public static void unzip(String gzip_path, String output_path){
+        byte[] buffer = new byte[1024];
+        try {
+            FileInputStream fileIn = new FileInputStream(gzip_path);
+            GZIPInputStream gZIPInputStream = new GZIPInputStream(fileIn);
+
+            FileOutputStream fileOutputStream = new FileOutputStream(output_path);
+            int bytes_read;
+            while ((bytes_read = gZIPInputStream.read(buffer)) > 0) {
+                fileOutputStream.write(buffer, 0, bytes_read);
+            }
+            gZIPInputStream.close();
+            fileOutputStream.close();
+            System.out.println("The file was decompressed successfully!");
+        }catch (IOException ex){
+            ex.printStackTrace();
         }
     }
 
@@ -118,6 +147,17 @@ public class TextPreprocess {
         writer.close();
         reader.close();
         return temp;
+    }
+
+    /**
+     * Test unzip.
+     *
+     * @throws Exception the exception
+     */
+    @Test
+    public void testUnzip() throws Exception{
+        String test_path = "src/main/resources/Mockdata/20140615-wiki-en_000000.txt.gz";
+        unzip(test_path, "src/main/resources/Mockdata/test.txt");
     }
 
     /**
