@@ -11,7 +11,7 @@ public class SplitDoc {
     public static final Pattern articlePattern = Pattern.compile("\\[{2}.*\\].*");
 
     public static void main(String[] args) throws Exception {
-        String inputfile_path = "src/main/resources/sample.txt";
+        String inputfile_path = "src/main/resources/sample.txt"; // I think you should use args...
         TextPreprocess tp = new TextPreprocess();
         File temp_file = tp.textCleaner(inputfile_path);
         String sample_path = temp_file.getAbsolutePath();
