@@ -28,8 +28,9 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 /**
- * @author Molin Liu
- * Test Class for calculating document term frequency.
+ * The type Doc tf.
+ *
+ * @author Molin Liu Test Class for calculating document term frequency.
  */
 public class DocTF {
 
@@ -205,6 +206,13 @@ public class DocTF {
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 
+    /**
+     * Gzip run int.
+     *
+     * @param args the args
+     * @return the int
+     * @throws Exception the exception
+     */
     public static int gzipRun(String [] args) throws Exception{
         String temp_path = args[1]+"/1tp";
         // Stage 1: Input Preprocessing
@@ -230,6 +238,8 @@ public class DocTF {
         job2.setJarByClass(DocTF.class);
         job2.setMapperClass(DocTFMapper.class);
         job2.setReducerClass(DocTFReducer.class);
+        job1.setMapOutputKeyClass(Text.class);
+        job1.setMapOutputValueClass(IntWritable.class);
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(FloatWritable.class);
         FileInputFormat.addInputPath(job2, new Path(temp_path));
@@ -237,6 +247,12 @@ public class DocTF {
         return job2.waitForCompletion(true)? 0 : 1;
     }
 
+    /**
+     * The entry point of application.
+     *
+     * @param args the input arguments
+     * @throws Exception the exception
+     */
     public static void main(String[] args) throws Exception {
         gzipRun(args);
     }
