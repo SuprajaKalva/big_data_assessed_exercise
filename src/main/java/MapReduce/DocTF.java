@@ -229,9 +229,10 @@ public class DocTF {
         job2.setJarByClass(DocTF.class);
         job2.setMapperClass(DocTFMapper.class);
         job2.setReducerClass(DocTFReducer.class);
-        job1.setOutputKeyClass(Text.class);
-        job1.setOutputValueClass(FloatWritable.class);
-        FileInputFormat.addInputPath(job2, new Path(args[1]));
+        job2.setOutputKeyClass(Text.class);
+        job2.setOutputValueClass(FloatWritable.class);
+        FileInputFormat.addInputPath(job2, new Path(temp_path));
+        FileOutputFormat.setOutputPath(job2, new Path(args[1]));
         return job2.waitForCompletion(true)? 0 : 1;
     }
 
