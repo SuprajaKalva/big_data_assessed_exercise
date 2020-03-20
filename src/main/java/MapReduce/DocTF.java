@@ -35,46 +35,45 @@ import org.apache.hadoop.util.ToolRunner;
 public class DocTF {
 
     /**
-     * 1. Input files preprocessing stage
-     * Text Preprocessing Mapper
+     * 1. Input files preprocessing stage Text Preprocessing Mapper
      */
     public static final Pattern HEAD_PATTERN = Pattern.compile("^\\[{2}.*\\]{2}");
 
     /**
-     * Text Pre-processing Mapper Class
-     * Input type: gzip files
+     * Text Pre-processing Mapper Class Input type: gzip files
      */
-    public static class TPMapper extends Mapper<LongWritable, Text, Text, Text>{
+    public static class TPMapper extends Mapper<LongWritable, Text, Text, Text> {
         private static String temp_title;
         private static List<String> stopWordList;
-        protected void setup(Context context)
-                throws IOException, InterruptedException{
+
+        protected void setup(Context context) throws IOException, InterruptedException {
             try {
-                //BufferedReader fis = new BufferedReader(new FileReader(stopWordFile_PATH));
+                // BufferedReader fis = new BufferedReader(new FileReader(stopWordFile_PATH));
                 this.stopWordList = Files.readAllLines(Paths.get("src/main/resources/stopword-list.txt"));
             } catch (IOException ioe) {
                 System.err.println("Exception while reading stop word file" + ioe.toString());
             }
         }
-        public void map(LongWritable offset, Text lineText, Context context)
-                throws IOException, InterruptedException{
+
+        public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
             // Preprocess the input text file.
             line = line.trim();
             // Remove subtitle
             line = line.replaceAll("={2}.*={2}", "");
             // Remove non-ASCII characters
-            line = line.replaceAll("[^A-Za-z0-9\\[\\]]","");
+            line = line.replaceAll("[^A-Za-z0-9\\[\\]]", " ");
             Matcher titleMatcher = HEAD_PATTERN.matcher(line);
-            if(line.equals("")){
+            if (line.equals("")) {
                 return;
             }
             // See if the current line is title:
-            if(!titleMatcher.find()){
+            if (!titleMatcher.find()) {
                 // Remove extra space
                 line = line.replaceAll(" +", " ");
                 // Remove non-title ]] symbols.
-                // More detail refer to https://github.com/SuprajaKalva/big_data_assessed_exercise/issues/1
+                // More detail please refer to
+                // https://github.com/SuprajaKalva/big_data_assessed_exercise/issues/1
                 line = line.replaceAll("\\]\\]", "");
 
                 // Remove stopwords
@@ -86,7 +85,7 @@ public class DocTF {
                 // Key: title of articles
                 // Value: chunk of body
                 context.write(new Text(temp_title), new Text(line));
-            }else{
+            } else {
                 // If it's title, simply set the current line to
                 // temp_title.
                 temp_title = line;
@@ -95,18 +94,18 @@ public class DocTF {
     }
 
     /**
-     * Text Pre-processing Reducer
-     * Concatenate all chunks belong to the same article.
+     * Text Pre-processing Reducer Concatenate all chunks belong to the same
+     * article.
      */
-    public static class TPReducer extends Reducer<Text, Text, Text, Text>{
+    public static class TPReducer extends Reducer<Text, Text, Text, Text> {
 
         public void reduce(Text temp_title, Iterable<Text> bodys, Context context)
-                throws IOException, InterruptedException{
+                throws IOException, InterruptedException {
             String article_body = "";
-            for(Text body: bodys){
-                if(article_body.equals("")){
+            for (Text body : bodys) {
+                if (article_body.equals("")) {
                     article_body += body.toString();
-                }else{
+                } else {
                     article_body += " " + body.toString();
                 }
             }
@@ -120,8 +119,7 @@ public class DocTF {
      * @param args the args
      * @throws Exception the exception
      */
-    public static void tpRun(String [] args)
-            throws Exception{
+    public static void tpRun(String[] args) throws Exception {
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf, "Title Extraction");
         job.setJarByClass(DocTF.class);
@@ -213,8 +211,8 @@ public class DocTF {
      * @return the int
      * @throws Exception the exception
      */
-    public static int gzipRun(String [] args) throws Exception{
-        String temp_path = args[1]+"/1tp";
+    public static int gzipRun(String[] args) throws Exception {
+        String temp_path = args[1] + "/1tp";
         // Stage 1: Input Preprocessing
         Configuration conf = new Configuration();
         Job job1 = Job.getInstance(conf, "Title Extraction");
@@ -222,29 +220,29 @@ public class DocTF {
         job1.setMapperClass(TPMapper.class);
         // job.setCombinerClass(SplitMapReduce.SplitReducer.class);
         job1.setReducerClass(TPReducer.class);
-        //job1.setMapOutputKeyClass(Text.class);
-        //job1.setMapOutputValueClass(Text.class);
+        // job1.setMapOutputKeyClass(Text.class);
+        // job1.setMapOutputValueClass(Text.class);
 
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
-        //FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
+        // FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
         MultipleInputs.addInputPath(job1, new Path("src/main/resources/Mockdata_tiny"), TextInputFormat.class);
         FileOutputFormat.setOutputPath(job1, new Path(temp_path));
         job1.waitForCompletion(true);
 
         // Stage 2: TF
-        String s2_outdir = args[1]+"/2tf";
+        String s2_outdir = args[1] + "/2tf";
         Job job2 = Job.getInstance(conf, "TF");
         job2.setJarByClass(DocTF.class);
         job2.setMapperClass(DocTFMapper.class);
         job2.setReducerClass(DocTFReducer.class);
-        job1.setMapOutputKeyClass(Text.class);
-        job1.setMapOutputValueClass(IntWritable.class);
+        job2.setMapOutputKeyClass(Text.class);
+        job2.setMapOutputValueClass(IntWritable.class);
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(FloatWritable.class);
         FileInputFormat.addInputPath(job2, new Path(temp_path));
         FileOutputFormat.setOutputPath(job2, new Path(s2_outdir));
-        return job2.waitForCompletion(true)? 0 : 1;
+        return job2.waitForCompletion(true) ? 0 : 1;
     }
 
     /**
