@@ -1,4 +1,5 @@
 package MapReduce;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -26,10 +27,10 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 /**
- * @author Molin Liu
- * Test class for TF-IDF calculation.
- * 3 MapReduces in this class:
- *      Text Preprocessing, TF, and IDF
+ * The type Tfidf map reduce.
+ *
+ * @author Molin Liu Test class for TF-IDF calculation. 2 MapReduces in this
+ *         class: TF, and IDF
  */
 public class TFIDFMapReduce {
 
@@ -40,26 +41,25 @@ public class TFIDFMapReduce {
     /**
      * The constant num_doc.
      */
-    public static int num_doc=0;
+    public static int num_doc = 0;
 
     /**
-     * Text Pre-processing Mapper Class
-     * Input type: gzip files
+     * Text Pre-processing Mapper Class Input type: gzip files
      */
-    public static class TPMapper extends Mapper<LongWritable, Text, Text, Text>{
+    public static class TPMapper extends Mapper<LongWritable, Text, Text, Text> {
         private static String temp_title;
         private static List<String> stopWordList;
-        protected void setup(Context context)
-                throws IOException, InterruptedException{
+
+        protected void setup(Context context) throws IOException, InterruptedException {
             try {
-                //BufferedReader fis = new BufferedReader(new FileReader(stopWordFile_PATH));
+                // BufferedReader fis = new BufferedReader(new FileReader(stopWordFile_PATH));
                 this.stopWordList = Files.readAllLines(Paths.get("src/main/resources/stopword-list.txt"));
             } catch (IOException ioe) {
                 System.err.println("Exception while reading stop word file" + ioe.toString());
             }
         }
-        public void map(LongWritable offset, Text lineText, Context context)
-                throws IOException, InterruptedException{
+
+        public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
             // Preprocess the input text file.
             line = line.trim();
@@ -68,11 +68,11 @@ public class TFIDFMapReduce {
             // Remove non-ASCII characters
             line = line.replaceAll("[^A-Za-z0-9\\[\\]]", " ");
             Matcher titleMatcher = HEAD_PATTERN.matcher(line);
-            if(line.equals("")){
+            if (line.equals("")) {
                 return;
             }
             // See if the current line is title:
-            if(!titleMatcher.find()){
+            if (!titleMatcher.find()) {
                 // Remove extra space
                 line = line.replaceAll(" +", " ");
                 // Remove non-title ]] symbols.
@@ -89,7 +89,7 @@ public class TFIDFMapReduce {
                 // Key: title of articles
                 // Value: chunk of body
                 context.write(new Text(temp_title), new Text(line));
-            }else{
+            } else {
                 // If it's title, simply set the current line to
                 // temp_title.
                 temp_title = line;
@@ -98,18 +98,18 @@ public class TFIDFMapReduce {
     }
 
     /**
-     * Text Pre-processing Reducer
-     * Concatenate all chunks belong to the same article.
+     * Text Pre-processing Reducer Concatenate all chunks belong to the same
+     * article.
      */
-    public static class TPReducer extends Reducer<Text, Text, Text, Text>{
+    public static class TPReducer extends Reducer<Text, Text, Text, Text> {
 
         public void reduce(Text temp_title, Iterable<Text> bodys, Context context)
-                throws IOException, InterruptedException{
+                throws IOException, InterruptedException {
             String article_body = "";
             for (Text body : bodys) {
                 if (article_body.equals("")) {
                     article_body += body.toString();
-                }else{
+                } else {
                     article_body += " " + body.toString();
                 }
             }
@@ -124,8 +124,7 @@ public class TFIDFMapReduce {
      * @param args the args
      * @throws Exception the exception
      */
-    public static void tprun(String [] args)
-            throws Exception{
+    public static void tprun(String[] args) throws Exception {
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf, "Title Extraction");
         job.setJarByClass(TFIDFMapReduce.class);
@@ -184,8 +183,7 @@ public class TFIDFMapReduce {
     /**
      * The type Tf mapper.
      */
-    public static class TFMapper
-            extends Mapper<LongWritable, Text, Text, IntWritable>{
+    public static class TFMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
         private Text word = new Text();
         private final static IntWritable one = new IntWritable(1);
 
@@ -225,17 +223,37 @@ public class TFIDFMapReduce {
      */
     public static class IDFMapper extends Mapper<LongWritable, Text, Text, Text> {
 
-        public void map(
-                LongWritable offset,
-                Text lineText,
-                Context context)
-                throws IOException, InterruptedException{
+        public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
             String term_title = line.split("\t")[0];
             String termFreq = line.split("\t")[1];
             String term = term_title.split("-")[0];
             String articleTitle = term_title.split("-")[1];
+            String term_title_tf = articleTitle + "=" + termFreq;
+            context.write(new Text(term), new Text(term_title_tf));
+        }
+    }
 
+    /**
+     * The type Idf reducer.
+     */
+    public static class IDFReducer extends Reducer<Text, Text, Text, FloatWritable> {
+        public void reduce(Text word, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            ArrayList<String> valCache = new ArrayList<>();
+
+            for (Text value : values) {
+                valCache.add(value.toString());
+            }
+            float IDF;
+            float TFIDF;
+
+            for (int i = 0; i < valCache.size(); i++) {
+                IDF = (float) Math.log10(1 + (num_doc / valCache.size()));
+                String[] article_tf = (valCache.get(i)).toString().split("=");
+
+                TFIDF = IDF * Float.parseFloat(article_tf[1].trim());
+                context.write(new Text(word + "-" + article_tf[0]), new FloatWritable(TFIDF));
+            }
         }
     }
 
