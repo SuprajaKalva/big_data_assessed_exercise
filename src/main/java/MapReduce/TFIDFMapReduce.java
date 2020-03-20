@@ -26,9 +26,9 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 /**
- * @author Molin Liu
- * Test class for TF-IDF calculation.
- * 2 MapReduces in this class: TF, and IDF
+ * The type Tfidf map reduce.
+ *
+ * @author Molin Liu Test class for TF-IDF calculation. 2 MapReduces in this class: TF, and IDF
  */
 public class TFIDFMapReduce {
 
@@ -36,6 +36,10 @@ public class TFIDFMapReduce {
      * Text Preprocessing Mapper
      */
     public static final Pattern HEAD_PATTERN = Pattern.compile("^\\[{2}.*\\]{2}");
+    /**
+     * The constant num_doc.
+     */
+    public static int num_doc=0;
 
     /**
      * Text Pre-processing Mapper Class
@@ -107,6 +111,7 @@ public class TFIDFMapReduce {
                     article_body += " " + body.toString();
                 }
             }
+            num_doc+=1;
             context.write(temp_title, new Text(article_body));
         }
     }
@@ -175,50 +180,6 @@ public class TFIDFMapReduce {
     }
 
     /**
-     * Run hadoop job
-     *
-     * @param args the args
-     * @throws Exception the exception
-     */
-    public static void dcTfrun(String[] args) throws Exception {
-        TextPreprocess tp = new TextPreprocess();
-        File temp_file = tp.textCleaner(args[0]);
-        Configuration conf = new Configuration();
-        Job job = Job.getInstance(conf, "Title Extraction");
-        job.setJarByClass(TFIDFMapReduce.class);
-        job.setMapperClass(TFIDFMapReduce.DocTFMapper.class);
-        // job.setCombinerClass(SplitMapReduce.SplitReducer.class);
-        job.setReducerClass(TFIDFMapReduce.DocTFReducer.class);
-        job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(IntWritable.class);
-
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(FloatWritable.class);
-        FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
-        System.exit(job.waitForCompletion(true) ? 0 : 1);
-    }
-
-    public static void gzipRun(String [] args) throws Exception{
-
-        Configuration conf = new Configuration();
-        Job job = Job.getInstance(conf, "Title Extraction");
-        job.setJarByClass(DocTF.class);
-        job.setMapperClass(DocTF.DocTFMapper.class);
-        // job.setCombinerClass(SplitMapReduce.SplitReducer.class);
-        job.setReducerClass(DocTF.DocTFReducer.class);
-        job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(IntWritable.class);
-
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(FloatWritable.class);
-        //FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
-        MultipleInputs.addInputPath(job, new Path("src/main/resources/Mockdata"), TextInputFormat.class);
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
-        System.exit(job.waitForCompletion(true) ? 0 : 1);
-    }
-
-    /**
      * The type Tf mapper.
      */
     public static class TFMapper
@@ -250,12 +211,16 @@ public class TFIDFMapReduce {
             for (IntWritable count : counts) {
                 sum += count.get();
             }
+            // Calculate the term frequency (TF)
             float termFreq = (float) 0.0;
             termFreq = 1 + (float) Math.log10(sum);
             context.write(word, new FloatWritable(termFreq));
         }
     }
 
+    /**
+     * The type Idf mapper.
+     */
     public static class IDFMapper
             extends Mapper<LongWritable, Text, Text, Text>{
 
@@ -269,32 +234,102 @@ public class TFIDFMapReduce {
             String termFreq = line.split("\t")[1];
             String term = term_title.split("-")[0];
             String articleTitle = term_title.split("-")[1];
-
+            String term_title_tf = articleTitle+"="+termFreq;
+            context.write(new Text(term), new Text(term_title_tf));
         }
     }
 
     /**
-     * Create a Term Frequency(TF) job on Hadoop
+     * The type Idf reducer.
+     */
+    public static class IDFReducer extends Reducer<Text, Text, Text, FloatWritable>{
+        public void reduce(
+                Text word,
+                Iterable<Text> values,
+                Context context)
+                throws IOException, InterruptedException{
+            ArrayList<String> valCache = new ArrayList<>();
+
+            for(Text value: values){
+                valCache.add(value.toString());
+            }
+            float IDF;
+            float TFIDF;
+
+            for(int i = 0; i<valCache.size(); i++){
+                IDF = (float)Math.log10(1 + (num_doc/valCache.size()));
+                String [] article_tf = (valCache.get(i)).toString().split("=");
+
+                TFIDF = IDF*Float.parseFloat(article_tf[1].trim());
+                context.write(new Text(word+"-"+article_tf[0]), new FloatWritable(TFIDF));
+            }
+        }
+    }
+
+    /**
+     * Tfidf run.
      *
      * @param args the args
      * @throws Exception the exception
      */
-    public static void TFJob(String[] args) throws Exception {
-        TextPreprocess tp = new TextPreprocess();
-        File temp_file = tp.textCleaner(args[0]);
+    public static void tfidfRun(String[] args)
+            throws Exception{
+        String s1_outdir = args[1] + "/1tp";
+        /**
+         * Stage 1: Input Preprocessing
+         */
         Configuration conf = new Configuration();
-        Job job = Job.getInstance(conf, "TF-IDF Calculation");
-        job.setJarByClass(TFIDFMapReduce.class);
-        job.setMapperClass(TFIDFMapReduce.TFMapper.class);
+        Job job1 = Job.getInstance(conf, "Title Extraction");
+        job1.setJarByClass(TFIDFMapReduce.class);
+        job1.setMapperClass(TFIDFMapReduce.TPMapper.class);
         // job.setCombinerClass(SplitMapReduce.SplitReducer.class);
-        job.setReducerClass(TFIDFMapReduce.TFReducer.class);
-        job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(IntWritable.class);
+        job1.setReducerClass(TFIDFMapReduce.TPReducer.class);
+        // job1.setMapOutputKeyClass(Text.class);
+        // job1.setMapOutputValueClass(Text.class);
 
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(FloatWritable.class);
-        FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
-        System.exit(job.waitForCompletion(true) ? 0 : 1);
+        job1.setOutputKeyClass(Text.class);
+        job1.setOutputValueClass(Text.class);
+        // FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
+        MultipleInputs.addInputPath(job1, new Path("src/main/resources/Mockdata_tiny"), TextInputFormat.class);
+        FileOutputFormat.setOutputPath(job1, new Path(s1_outdir));
+        job1.waitForCompletion(true);
+
+        /**
+         * Stage 2: TF
+         */
+        String s2_outdir = args[1] + "/2tf";
+        Job job2 = Job.getInstance(conf, "TF");
+        job2.setJarByClass(TFIDFMapReduce.class);
+        job2.setMapperClass(TFIDFMapReduce.DocTFMapper.class);
+        job2.setReducerClass(TFIDFMapReduce.DocTFReducer.class);
+        job2.setMapOutputKeyClass(Text.class);
+        job2.setMapOutputValueClass(IntWritable.class);
+        job2.setOutputKeyClass(Text.class);
+        job2.setOutputValueClass(FloatWritable.class);
+        FileInputFormat.addInputPath(job2, new Path(s1_outdir));
+        FileOutputFormat.setOutputPath(job2, new Path(s2_outdir));
+        job2.waitForCompletion(true);
+
+        /**
+         * Stage 3: TF-IDF
+         */
+        String s3_outdir = args[1] +"/3tfidf";
+        Job job3 = Job.getInstance(conf, "TF-IDF");
+        job3.setJarByClass(TFIDFMapReduce.class);
+        job3.setMapperClass(TFIDFMapReduce.IDFMapper.class);
+        job3.setReducerClass(TFIDFMapReduce.IDFReducer.class);
+
+        job3.setMapOutputKeyClass(Text.class);
+        job3.setMapOutputValueClass(Text.class);
+
+        job3.setOutputKeyClass(Text.class);
+        job3.setOutputValueClass(FloatWritable.class);
+
+        FileInputFormat.addInputPath(job3, new Path(s2_outdir));
+        FileOutputFormat.setOutputPath(job3, new Path(s3_outdir));
+        System.exit(job3.waitForCompletion(true) ? 0 : 1);
+    }
+    public static void main(String[] args) throws Exception {
+        tfidfRun(args);
     }
 }

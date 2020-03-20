@@ -6,6 +6,7 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="Merge" />
         <module name="UoG-BD-MR" />
         <module name="big_data_assessed_exercise" />
       </profile>
