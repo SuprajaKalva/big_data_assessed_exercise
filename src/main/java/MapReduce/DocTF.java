@@ -206,7 +206,7 @@ public class DocTF {
     }
 
     public static int gzipRun(String [] args) throws Exception{
-        String temp_path = args[1]+"/temp";
+        String temp_path = args[1]+"/1tp";
         // Stage 1: Input Preprocessing
         Configuration conf = new Configuration();
         Job job1 = Job.getInstance(conf, "Title Extraction");
@@ -225,6 +225,7 @@ public class DocTF {
         job1.waitForCompletion(true);
 
         // Stage 2: TF
+        String s2_outdir = args[1]+"/2tf";
         Job job2 = Job.getInstance(conf, "TF");
         job2.setJarByClass(DocTF.class);
         job2.setMapperClass(DocTFMapper.class);
@@ -232,7 +233,7 @@ public class DocTF {
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(FloatWritable.class);
         FileInputFormat.addInputPath(job2, new Path(temp_path));
-        FileOutputFormat.setOutputPath(job2, new Path(args[1]));
+        FileOutputFormat.setOutputPath(job2, new Path(s2_outdir));
         return job2.waitForCompletion(true)? 0 : 1;
     }
 
