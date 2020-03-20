@@ -226,7 +226,7 @@ public class DocTF {
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
         // FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
-        MultipleInputs.addInputPath(job1, new Path("src/main/resources/Mockdata_tiny"), TextInputFormat.class);
+        MultipleInputs.addInputPath(job1, new Path("src/main/resources/Mockdata"), TextInputFormat.class);
         FileOutputFormat.setOutputPath(job1, new Path(temp_path));
         job1.waitForCompletion(true);
 
