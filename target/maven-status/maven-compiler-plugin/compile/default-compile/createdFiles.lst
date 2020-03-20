@@ -4,6 +4,7 @@ MapReduce/TestMapReduce$IntSumReducer.class
 MapReduce/DocTF$DocTFReducer.class
 MapReduce/TFIDFMapReduce.class
 MapReduce/TestMapReduce.class
+MapReduce/TFIDFMapReduce$IDFReducer.class
 MapReduce/TestMapReduce$TokenizerMapper.class
 MapReduce/SplitMapReduce$SplitCombiner.class
 MapReduce/DocTF$TPReducer.class
