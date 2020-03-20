@@ -83,4 +83,9 @@ public class TextProcMapReduce {
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
+
+    public static void main(String[] args)
+            throws Exception{
+        run(args);
+    }
 }
