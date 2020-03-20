@@ -27,13 +27,16 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
  * Input gzip type files.
  */
 public class TextProcMapReduce {
+
     /**
      * Text Preprocessing Mapper
-     * @author Molin Liu
      */
-
     public static final Pattern titlePattern = Pattern.compile("^\\[{2}.*\\]{2}");
 
+    /**
+     * Text Pre-processing Mapper Class
+     * Input type: gzip files
+     */
     public static class TPMapper extends Mapper<LongWritable, Text, Text, Text>{
         private static String temp_title;
         public void map(LongWritable offset, Text lineText, Context context)
@@ -41,20 +44,38 @@ public class TextProcMapReduce {
             String line = lineText.toString();
             // Preprocess the input text file.
             line = line.trim();
+            // Remove subtitle
             line = line.replaceAll("={2}.*={2}", "");
+            // Remove non-ASCII characters
             line = line.replaceAll("[^A-Za-z0-9\\[\\]]"," ");
             Matcher titleMatcher = titlePattern.matcher(line);
             if(line.equals("")){
                 return;
             }
+            // See if the current line is title:
             if(!titleMatcher.find()){
+                // Remove extra space
+                line = line.replaceAll(" +", " ");
+                // Remove non-title ]] symbols.
+                // More detail refer to https://github.com/SuprajaKalva/big_data_assessed_exercise/issues/1
+                line = line.replaceAll("\\]\\]", "");
+
+                // Construct key-value pair.
+                // Key: title of articles
+                // Value: chunk of body
                 context.write(new Text(temp_title), new Text(line));
             }else{
+                // If it's title, simply set the current line to
+                // temp_title.
                 temp_title = line;
             }
         }
     }
 
+    /**
+     * Text Pre-processing Reducer
+     * Concatenate all chunks belong to the same article.
+     */
     public static class TPReducer extends Reducer<Text, Text, Text, Text>{
 
         public void reduce(Text temp_title, Iterable<Text> bodys, Context context)
@@ -66,6 +87,13 @@ public class TextProcMapReduce {
             context.write(temp_title, new Text(article_body));
         }
     }
+
+    /**
+     * Run.
+     *
+     * @param args the args
+     * @throws Exception the exception
+     */
     public static void run(String [] args)
             throws Exception{
         Configuration conf = new Configuration();
@@ -79,11 +107,19 @@ public class TextProcMapReduce {
 
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
+
+        // The input is a folder.
         MultipleInputs.addInputPath(job, new Path("src/main/resources/Mockdata_tiny"), TextInputFormat.class);
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 
+    /**
+     * The entry point of application.
+     *
+     * @param args the input arguments
+     * @throws Exception the exception
+     */
     public static void main(String[] args)
             throws Exception{
         run(args);
