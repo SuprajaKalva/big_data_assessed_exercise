@@ -3,6 +3,11 @@ package MapReduce;
 import java.io.File;
 import java.io.IOException;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,6 +44,16 @@ public class TextProcMapReduce {
      */
     public static class TPMapper extends Mapper<LongWritable, Text, Text, Text>{
         private static String temp_title;
+        private static List<String> stopWordList;
+        protected void setup(Context context)
+                throws IOException, InterruptedException{
+            try {
+                //BufferedReader fis = new BufferedReader(new FileReader(stopWordFile_PATH));
+                this.stopWordList = Files.readAllLines(Paths.get("src/main/resources/stopword-list.txt"));
+            } catch (IOException ioe) {
+                System.err.println("Exception while reading stop word file" + ioe.toString());
+            }
+        }
         public void map(LongWritable offset, Text lineText, Context context)
                 throws IOException, InterruptedException{
             String line = lineText.toString();
@@ -59,6 +74,11 @@ public class TextProcMapReduce {
                 // Remove non-title ]] symbols.
                 // More detail refer to https://github.com/SuprajaKalva/big_data_assessed_exercise/issues/1
                 line = line.replaceAll("\\]\\]", "");
+
+                // Remove stopwords
+                List<String> allWords = new ArrayList<String>(Arrays.asList(line.toLowerCase().split(" ")));
+                allWords.removeAll(stopWordList);
+                line = String.join(" ", allWords);
 
                 // Construct key-value pair.
                 // Key: title of articles
