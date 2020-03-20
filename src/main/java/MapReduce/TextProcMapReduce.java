@@ -12,6 +12,7 @@ import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.inject.internal.util.$FinalizableWeakReference;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.io.*;
@@ -62,7 +63,7 @@ public class TextProcMapReduce {
             // Remove subtitle
             line = line.replaceAll("={2}.*={2}", "");
             // Remove non-ASCII characters
-            line = line.replaceAll("[^A-Za-z0-9\\[\\]]","");
+            line = line.replaceAll("[^A-Za-z0-9\\[\\]]"," "); // Added space here
             Matcher titleMatcher = titlePattern.matcher(line);
             if(line.equals("")){
                 return;
@@ -130,6 +131,7 @@ public class TextProcMapReduce {
 
         // The input is a folder.
         MultipleInputs.addInputPath(job, new Path("src/main/resources/Mockdata"), TextInputFormat.class);
+        //MultipleInputs.addInputPath(job, new Path(args[0]), TextInputFormat.class); // changed it to args...
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
