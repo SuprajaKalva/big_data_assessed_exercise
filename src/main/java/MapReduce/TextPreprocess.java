@@ -7,17 +7,22 @@ import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import static MapReduce.FileHandler.extractGZip;
 
 /**
+ * @author Molin Liu
  * Preprocess the text file before feed into MapReduce.
- * TODO: Multi-thread unzip files.
  */
 public class TextPreprocess {
     /**
@@ -51,6 +56,46 @@ public class TextPreprocess {
     }
 
     /**
+     * Unzip.
+     *
+     * @param gzip_path the gzip path
+     */
+    public static void unzip(String gzip_path){
+        byte[] buffer = new byte[1024];
+        String output_path = gzip_path.substring(0, gzip_path.length()-3);
+        try {
+            FileInputStream fileIn = new FileInputStream(gzip_path);
+            GZIPInputStream gZIPInputStream = new GZIPInputStream(fileIn);
+
+            FileOutputStream fileOutputStream = new FileOutputStream(output_path);
+            int bytes_read;
+            while ((bytes_read = gZIPInputStream.read(buffer)) > 0) {
+                fileOutputStream.write(buffer, 0, bytes_read);
+            }
+            gZIPInputStream.close();
+            fileOutputStream.close();
+        }catch (IOException ex){
+            System.out.println(gzip_path);
+            ex.printStackTrace();
+        }
+    }
+
+    /**
+     * multi-thread unzip.
+     *
+     * @param data_dir the data dir
+     */
+    public static void mt_unzip(String data_dir){
+        try {
+            Files.walk(Paths.get(data_dir)).filter(p -> p.getFileName().toString().startsWith("20140615-wiki-en_")).parallel().forEach(file -> {
+                unzip(file.toString());
+            });
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+    }
+
+    /**
      * Extract .tar file.
      *
      * @param filePath the file path
@@ -67,30 +112,6 @@ public class TextPreprocess {
         }
     }
 
-    /**
-     * Unzip.
-     *
-     * @param gzip_path   the gzip path
-     * @param output_path the output path
-     */
-    public static void unzip(String gzip_path, String output_path){
-        byte[] buffer = new byte[1024];
-        try {
-            FileInputStream fileIn = new FileInputStream(gzip_path);
-            GZIPInputStream gZIPInputStream = new GZIPInputStream(fileIn);
-
-            FileOutputStream fileOutputStream = new FileOutputStream(output_path);
-            int bytes_read;
-            while ((bytes_read = gZIPInputStream.read(buffer)) > 0) {
-                fileOutputStream.write(buffer, 0, bytes_read);
-            }
-            gZIPInputStream.close();
-            fileOutputStream.close();
-            System.out.println("The file was decompressed successfully!");
-        }catch (IOException ex){
-            ex.printStackTrace();
-        }
-    }
 
     /**
      * Remove all subtitle in the input text file.
@@ -156,8 +177,38 @@ public class TextPreprocess {
      */
     @Test
     public void testUnzip() throws Exception{
-        String test_path = "src/main/resources/Mockdata/20140615-wiki-en_000000.txt.gz";
-        unzip(test_path, "src/main/resources/Mockdata/test.txt");
+        long start = System.currentTimeMillis();
+        //String test_path = "src/main/resources/Mockdata/20140615-wiki-en_000000.txt.gz";
+        //String data_dir = "src/main/resources/Mockdata";
+        String data_dir = "/Users/meow/Resource/Mockdata";
+        File data_folder = new File(data_dir);
+        File [] list_file = data_folder.listFiles();
+        for(File file : list_file){
+            if(file.isFile() && !file.getName().toString().endsWith(".txt")){
+                unzip(file.toString());
+            }
+        }
+        //mt_unzip(data_dir);
+        long end = System.currentTimeMillis();
+        long timeElapsed = end - start;
+        System.out.println("Elapsed time:"+timeElapsed/1000F+"s");
+    }
+
+    /**
+     * Test multi-thread unizip.
+     *
+     * @throws Exception the exception
+     */
+    @Test
+    public void testMTUnizip() throws Exception{
+        long start = System.currentTimeMillis();
+        //String test_path = "src/main/resources/Mockdata/20140615-wiki-en_000000.txt.gz";
+        //String data_dir = "src/main/resources/Mockdata";
+        String data_dir = "/Users/meow/Resource/Mockdata";
+        mt_unzip(data_dir);
+        long end = System.currentTimeMillis();
+        long timeElapsed = end - start;
+        System.out.println("Elapsed time:"+timeElapsed/1000F+"s");
     }
 
     /**

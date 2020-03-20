@@ -25,3 +25,6 @@ hs_err_pid*
 
 # Buffer files
 file*.txt
+
+# Uncompressed Mockdata
+20140615-wiki-en*
