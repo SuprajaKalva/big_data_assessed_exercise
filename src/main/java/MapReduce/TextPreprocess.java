@@ -55,6 +55,16 @@ public class TextPreprocess {
         }
     }
 
+    public static class MT_Unzip extends Thread{
+        private String gzipPath;
+        public MT_Unzip(String gzipPath){
+            this.gzipPath = gzipPath;
+        }
+        public void run(){
+            unzip(gzipPath);
+        }
+    }
+
     /**
      * Unzip.
      *
@@ -115,10 +125,8 @@ public class TextPreprocess {
 
     /**
      * Remove all subtitle in the input text file.
-     * <p>
      * Since we need to split the file into a series of articles, for convinience,
      * it would be easier without subtitles.
-     * <p>
      * The formate of subtitle can be represented in regular expression `={2}.*={2}`
      *
      * @param filePath the file path
