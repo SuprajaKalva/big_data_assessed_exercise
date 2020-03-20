@@ -102,7 +102,11 @@ public class TextProcMapReduce {
                 throws IOException, InterruptedException{
             String article_body = "";
             for(Text body: bodys){
-                article_body += body.toString();
+                if(article_body.equals("")){
+                    article_body += body.toString();
+                }else{
+                    article_body += " " + body.toString();
+                }
             }
             context.write(temp_title, new Text(article_body));
         }
@@ -129,7 +133,7 @@ public class TextProcMapReduce {
         job.setOutputValueClass(Text.class);
 
         // The input is a folder.
-        MultipleInputs.addInputPath(job, new Path("src/main/resources/Mockdata_tiny"), TextInputFormat.class);
+        MultipleInputs.addInputPath(job, new Path("src/main/resources/Mockdata"), TextInputFormat.class);
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
