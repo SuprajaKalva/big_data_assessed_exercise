@@ -103,11 +103,7 @@ public class TextProcMapReduce {
                 throws IOException, InterruptedException{
             String article_body = "";
             for(Text body: bodys){
-                if(article_body.equals("")){
-                    article_body += body.toString();
-                }else{
-                    article_body += " " + body.toString();
-                }
+                article_body += " " + body.toString();
             }
             context.write(temp_title, new Text(article_body));
         }
