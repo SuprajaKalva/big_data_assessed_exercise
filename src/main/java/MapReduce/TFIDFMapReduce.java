@@ -26,9 +26,10 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 /**
- * The type Tfidf map reduce.
- *
- * @author Molin Liu Test class for TF-IDF calculation. 2 MapReduces in this class: TF, and IDF
+ * @author Molin Liu
+ * Test class for TF-IDF calculation.
+ * 3 MapReduces in this class:
+ *      Text Preprocessing, TF, and IDF
  */
 public class TFIDFMapReduce {
 
@@ -65,7 +66,7 @@ public class TFIDFMapReduce {
             // Remove subtitle
             line = line.replaceAll("={2}.*={2}", "");
             // Remove non-ASCII characters
-            line = line.replaceAll("[^A-Za-z0-9\\[\\]]","");
+            line = line.replaceAll("[^A-Za-z0-9\\[\\]]", " ");
             Matcher titleMatcher = HEAD_PATTERN.matcher(line);
             if(line.equals("")){
                 return;
@@ -75,7 +76,8 @@ public class TFIDFMapReduce {
                 // Remove extra space
                 line = line.replaceAll(" +", " ");
                 // Remove non-title ]] symbols.
-                // More detail refer to https://github.com/SuprajaKalva/big_data_assessed_exercise/issues/1
+                // More detail refer to
+                // https://github.com/SuprajaKalva/big_data_assessed_exercise/issues/1
                 line = line.replaceAll("\\]\\]", "");
 
                 // Remove stopwords
@@ -104,14 +106,14 @@ public class TFIDFMapReduce {
         public void reduce(Text temp_title, Iterable<Text> bodys, Context context)
                 throws IOException, InterruptedException{
             String article_body = "";
-            for(Text body: bodys){
-                if(article_body.equals("")){
+            for (Text body : bodys) {
+                if (article_body.equals("")) {
                     article_body += body.toString();
                 }else{
                     article_body += " " + body.toString();
                 }
             }
-            num_doc+=1;
+            num_doc += 1;
             context.write(temp_title, new Text(article_body));
         }
     }
@@ -221,8 +223,7 @@ public class TFIDFMapReduce {
     /**
      * The type Idf mapper.
      */
-    public static class IDFMapper
-            extends Mapper<LongWritable, Text, Text, Text>{
+    public static class IDFMapper extends Mapper<LongWritable, Text, Text, Text> {
 
         public void map(
                 LongWritable offset,
@@ -234,35 +235,7 @@ public class TFIDFMapReduce {
             String termFreq = line.split("\t")[1];
             String term = term_title.split("-")[0];
             String articleTitle = term_title.split("-")[1];
-            String term_title_tf = articleTitle+"="+termFreq;
-            context.write(new Text(term), new Text(term_title_tf));
-        }
-    }
 
-    /**
-     * The type Idf reducer.
-     */
-    public static class IDFReducer extends Reducer<Text, Text, Text, FloatWritable>{
-        public void reduce(
-                Text word,
-                Iterable<Text> values,
-                Context context)
-                throws IOException, InterruptedException{
-            ArrayList<String> valCache = new ArrayList<>();
-
-            for(Text value: values){
-                valCache.add(value.toString());
-            }
-            float IDF;
-            float TFIDF;
-
-            for(int i = 0; i<valCache.size(); i++){
-                IDF = (float)Math.log10(1 + (num_doc/valCache.size()));
-                String [] article_tf = (valCache.get(i)).toString().split("=");
-
-                TFIDF = IDF*Float.parseFloat(article_tf[1].trim());
-                context.write(new Text(word+"-"+article_tf[0]), new FloatWritable(TFIDF));
-            }
         }
     }
 
@@ -272,14 +245,13 @@ public class TFIDFMapReduce {
      * @param args the args
      * @throws Exception the exception
      */
-    public static void tfidfRun(String[] args)
-            throws Exception{
+    public static void tfidfRun(String[] args) throws Exception {
         String s1_outdir = args[1] + "/1tp";
         /**
          * Stage 1: Input Preprocessing
          */
         Configuration conf = new Configuration();
-        Job job1 = Job.getInstance(conf, "Title Extraction");
+        Job job1 = Job.getInstance(conf, "Input Preprocessing");
         job1.setJarByClass(TFIDFMapReduce.class);
         job1.setMapperClass(TFIDFMapReduce.TPMapper.class);
         // job.setCombinerClass(SplitMapReduce.SplitReducer.class);
@@ -290,7 +262,7 @@ public class TFIDFMapReduce {
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
         // FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
-        MultipleInputs.addInputPath(job1, new Path("src/main/resources/Mockdata_tiny"), TextInputFormat.class);
+        MultipleInputs.addInputPath(job1, new Path("src/main/resources/Mockdata"), TextInputFormat.class);
         FileOutputFormat.setOutputPath(job1, new Path(s1_outdir));
         job1.waitForCompletion(true);
 
@@ -313,7 +285,7 @@ public class TFIDFMapReduce {
         /**
          * Stage 3: TF-IDF
          */
-        String s3_outdir = args[1] +"/3tfidf";
+        String s3_outdir = args[1] + "/3tfidf";
         Job job3 = Job.getInstance(conf, "TF-IDF");
         job3.setJarByClass(TFIDFMapReduce.class);
         job3.setMapperClass(TFIDFMapReduce.IDFMapper.class);
@@ -329,6 +301,7 @@ public class TFIDFMapReduce {
         FileOutputFormat.setOutputPath(job3, new Path(s3_outdir));
         System.exit(job3.waitForCompletion(true) ? 0 : 1);
     }
+
     public static void main(String[] args) throws Exception {
         tfidfRun(args);
     }
