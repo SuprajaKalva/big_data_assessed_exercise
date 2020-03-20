@@ -11,7 +11,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -23,7 +22,8 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 /**
- * The type Split map reduce.
+ * @author Molin Liu
+ * Test class for split input file into <title, body>
  */
 public class SplitMapReduce {
     /**
@@ -59,7 +59,6 @@ public class SplitMapReduce {
      */
     public static class SplitCombiner extends Reducer<Text, Text, Text, Text> {
         public void reduce(Text title, Iterable<Text> bodys, Context context) throws IOException, InterruptedException {
-
             // context.write();
         }
     }
