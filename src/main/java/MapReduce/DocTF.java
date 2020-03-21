@@ -151,6 +151,10 @@ public class DocTF {
         private Text word = new Text();
         private final static IntWritable one = new IntWritable(1);
         private MultipleOutputs<Text, IntWritable> mos;
+
+        protected void setup(Context context){
+            mos = new MultipleOutputs<>(context);
+        }
         public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
             Matcher head_matcher = HEAD_PATTERN.matcher(line);
