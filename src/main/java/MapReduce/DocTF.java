@@ -84,6 +84,15 @@ public class DocTF {
                 allWords.removeAll(stopWordList);
                 line = String.join(" ", allWords);
 
+                //Porter Stemmer
+                List<String> allWordsToStem = new ArrayList<String>(Arrays.asList(line.toLowerCase().split(" ")));
+                utils.PorterStemmer porterStemmer = new utils.PorterStemmer();
+                List<String> ported_words = new ArrayList<>();
+                allWordsToStem.forEach(word -> {
+                    ported_words.add(porterStemmer.stem(word));
+                });
+                line = String.join(" ", ported_words);
+
                 // Construct key-value pair.
                 // Key: title of articles
                 // Value: chunk of body
@@ -189,6 +198,8 @@ public class DocTF {
             context.write(word, new FloatWritable(termFreq));
         }
     }
+
+
 
     /**
      * Run hadoop job
