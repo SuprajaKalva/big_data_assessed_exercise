@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 
 import java.io.*;
+import java.nio.file.Paths;
 import java.util.StringTokenizer;
 
 import org.apache.hadoop.fs.Path;
@@ -43,7 +44,7 @@ public class QueryVectorizer {
         //We need the IDF vocabulary to be calculated first and hence a separate class of IDF is needed
         FileSystem fs = FileSystem.get(configuration);
         //Here we give path for the IDF text file created after IDF class job
-        FSDataInputStream fileWithIDF = fs.open(new Path(Paths.IND_IN2));
+        FSDataInputStream fileWithIDF = fs.open(new Path(args[1]));
         ;
         BufferedReader br = new BufferedReader(new InputStreamReader(fileWithIDF));
 
