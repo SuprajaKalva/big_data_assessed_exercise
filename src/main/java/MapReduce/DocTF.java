@@ -24,6 +24,8 @@ import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -148,17 +150,20 @@ public class DocTF {
     public static class DocTFMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
         private Text word = new Text();
         private final static IntWritable one = new IntWritable(1);
-
+        private MultipleOutputs<Text, IntWritable> mos;
         public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
             Matcher head_matcher = HEAD_PATTERN.matcher(line);
             if (head_matcher.find()) {
                 String key_title = head_matcher.group(0);
                 StringTokenizer itr = new StringTokenizer(line);
+                int docLen = 0;
                 while (itr.hasMoreTokens()) {
                     word.set(itr.nextToken() + "-" + key_title);
+                    docLen+=1;
                     context.write(word, one);
                 }
+                mos.write("DocLen", new Text(key_title), new IntWritable(docLen));
             }
         }
     }
@@ -240,6 +245,7 @@ public class DocTF {
         job2.setMapOutputValueClass(IntWritable.class);
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(FloatWritable.class);
+        MultipleOutputs.addNamedOutput(job2, "DocLen", SequenceFileOutputFormat.class, Text.class, IntWritable.class);
         FileInputFormat.addInputPath(job2, new Path(temp_path));
         FileOutputFormat.setOutputPath(job2, new Path(s2_outdir));
         return job2.waitForCompletion(true) ? 0 : 1;
