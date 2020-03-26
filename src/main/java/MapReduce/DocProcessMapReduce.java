@@ -113,11 +113,19 @@ public class DocProcessMapReduce {
 
     /**
      * The type Document Term Frequency Mapper.
+     *
+     * @version 1.2.0
+     * Add MultipleOutputs feature
+     * It will generate a text file with document length
      */
     public static class DocTFMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
         private Text word = new Text();
         private final static IntWritable one = new IntWritable(1);
         private MultipleOutputs<Text, IntWritable> mos;
+
+        protected void setup(Context context){
+            mos = new MultipleOutputs<>(context);
+        }
         public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
             Matcher head_matcher = HEAD_PATTERN.matcher(line);

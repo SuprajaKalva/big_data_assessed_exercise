@@ -33,7 +33,9 @@ import org.apache.hadoop.util.ToolRunner;
 /**
  * The type Doc tf.
  *
- * @author Molin Liu Test Class for calculating document term frequency.
+ * @author Molin Liu Test
+ * @version 1.2.0
+ * Class for calculating document term frequency.
  */
 public class DocTF {
 
