@@ -225,7 +225,7 @@ public class TFIDFMapReduce {
      * @throws Exception the exception
      */
     public static void tfidfRun(String[] args) throws Exception {
-        String s1_outdir = args[1] + "/1tp";
+        String s1_outdir = args[0] + "/1tp";
         /**
          * Stage 1: Input Preprocessing
          */
@@ -248,7 +248,7 @@ public class TFIDFMapReduce {
         /**
          * Stage 2: TF
          */
-        String s2_outdir = args[1] + "/2tf";
+        String s2_outdir = args[0] + "/2tf";
         Job job2 = Job.getInstance(conf, "TF");
         job2.setJarByClass(TFIDFMapReduce.class);
         job2.setMapperClass(TFIDFMapReduce.DocTFMapper.class);
@@ -264,7 +264,7 @@ public class TFIDFMapReduce {
         /**
          * Stage 3: TF-IDF
          */
-        String s3_outdir = args[1] + "/3tfidf";
+        String s3_outdir = args[0] + "/3tfidf";
         Job job3 = Job.getInstance(conf, "TF-IDF");
         job3.setJarByClass(TFIDFMapReduce.class);
         job3.setMapperClass(TFIDFMapReduce.IDFMapper.class);

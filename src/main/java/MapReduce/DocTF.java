@@ -86,6 +86,15 @@ public class DocTF {
                 allWords.removeAll(stopWordList);
                 line = String.join(" ", allWords);
 
+                //Porter Stemmer
+                List<String> allWordsToStem = new ArrayList<String>(Arrays.asList(line.toLowerCase().split(" ")));
+                utils.PorterStemmer porterStemmer = new utils.PorterStemmer();
+                List<String> ported_words = new ArrayList<>();
+                allWordsToStem.forEach(word -> {
+                    ported_words.add(porterStemmer.stem(word));
+                });
+                line = String.join(" ", ported_words);
+
                 // Construct key-value pair.
                 // Key: title of articles
                 // Value: chunk of body
@@ -155,9 +164,10 @@ public class DocTF {
         private final static IntWritable one = new IntWritable(1);
         private MultipleOutputs<Text, IntWritable> mos;
 
-        protected void setup(Context context){
+        protected void setup(Context context) {
             mos = new MultipleOutputs<>(context);
         }
+
         public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
             Matcher head_matcher = HEAD_PATTERN.matcher(line);
@@ -167,7 +177,7 @@ public class DocTF {
                 int docLen = 0;
                 while (itr.hasMoreTokens()) {
                     word.set(itr.nextToken() + "-" + key_title);
-                    docLen+=1;
+                    docLen += 1;
                     context.write(word, one);
                 }
                 mos.write("DocLen", new Text(key_title), new IntWritable(docLen));
@@ -190,6 +200,8 @@ public class DocTF {
             context.write(word, new FloatWritable(termFreq));
         }
     }
+
+
 
     /**
      * Run hadoop job
