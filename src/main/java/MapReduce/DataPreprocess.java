@@ -46,7 +46,7 @@ public class DataPreprocess {
      * The constant num_doc.
      */
     public static int num_doc = 0;
-
+    public static int total_docLen = 0;
     /**
      * Text Pre-processing Mapper Class Input type: gzip files
      */
@@ -146,10 +146,14 @@ public class DataPreprocess {
                     word.set(itr.nextToken() + "-" + key_title);
                     context.write(word, one);
                 }
+                total_docLen+=docLen;
                 mos.write("DocLen", new Text(key_title), new IntWritable(docLen));
             }
         }
+
+
     }
+
 
     /**
      * The type Doc tf reducer.
@@ -167,7 +171,6 @@ public class DataPreprocess {
             context.write(word, new IntWritable(termOcc));
         }
     }
-
     /**
      * The type Idf mapper.
      */
