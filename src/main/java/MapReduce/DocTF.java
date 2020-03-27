@@ -180,6 +180,7 @@ public class DocTF {
                     docLen += 1;
                     context.write(word, one);
                 }
+                // Set the output file's name DocLen-m-xxxx.txt
                 mos.write("DocLen", new Text(key_title), new IntWritable(docLen));
             }
         }
@@ -236,7 +237,9 @@ public class DocTF {
      * @throws Exception the exception
      */
     public static int gzipRun(String[] args) throws Exception {
-        String temp_path = args[1] + "/1tp";
+        String input_dir = args[0];
+        String output_dir = args[1];
+        String temp_path = output_dir + "/1tp";
         // Stage 1: Input Preprocessing
         Configuration conf = new Configuration();
         Job job1 = Job.getInstance(conf, "Title Extraction");
@@ -250,12 +253,14 @@ public class DocTF {
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
         // FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
-        MultipleInputs.addInputPath(job1, new Path("src/main/resources/Mockdata"), TextInputFormat.class);
+        MultipleInputs.addInputPath(job1, new Path(input_dir), TextInputFormat.class);
         FileOutputFormat.setOutputPath(job1, new Path(temp_path));
-        job1.waitForCompletion(true);
+        if (!job1.waitForCompletion(true)){
+            System.exit(1);
+        }
 
         // Stage 2: TF
-        String s2_outdir = args[1] + "/2tf";
+        String s2_outdir = output_dir + "/2tf";
         Job job2 = Job.getInstance(conf, "TF");
         job2.setJarByClass(DocTF.class);
         job2.setMapperClass(DocTFMapper.class);
