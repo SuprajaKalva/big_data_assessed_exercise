@@ -150,8 +150,6 @@ public class DataPreprocess {
                 mos.write("DocLen", new Text(key_title), new IntWritable(docLen));
             }
         }
-
-
     }
 
 
@@ -176,7 +174,8 @@ public class DataPreprocess {
      */
     public static class IDFMapper extends Mapper<LongWritable, Text, Text, Text> {
 
-        public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
+        public void map(LongWritable offset, Text lineText, Context context)
+                throws IOException, InterruptedException {
             String line = lineText.toString();
             String term_title = line.split("\t")[0];
             String termOcc = line.split("\t")[1];
@@ -207,6 +206,15 @@ public class DataPreprocess {
                 context.write(new Text(word + "-" + article_tf[0]), new FloatWritable(IDF));
             }
         }
+    }
+
+    public static class DocCoefMapper extends Mapper<LongWritable, Text, Text, FloatWritable>{
+        public void map(LongWritable offset, Text lineText, Context context)
+                throws IOException, InterruptedException{
+            String line = lineText.toString();
+            String title = line.split("\t")[0];
+        }
+
     }
 
     /**
@@ -263,8 +271,8 @@ public class DataPreprocess {
         /**
          * Stage 3: TF-IDF
          */
-        String s3_outdir = output_dir + "/3tfidf";
-        Job job3 = Job.getInstance(conf, "TF-IDF");
+        String s3_outdir = output_dir + "/3idf";
+        Job job3 = Job.getInstance(conf, "IDF");
         job3.setJarByClass(DataPreprocess.class);
         job3.setMapperClass(DataPreprocess.IDFMapper.class);
         job3.setReducerClass(DataPreprocess.IDFReducer.class);
