@@ -40,4 +40,5 @@ MapReduce/DataPreprocess.class
 MapReduce/SplitMapReduce.class
 MapReduce/DataPreprocess$TPReducer.class
 MapReduce/TextPreprocess$MT_Unzip.class
+MapReduce/DataPreprocess$DocCoefReducer.class
 MapReduce/DocProcessMapReduce$DocTFMapper.class

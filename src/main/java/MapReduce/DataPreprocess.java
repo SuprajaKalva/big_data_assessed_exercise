@@ -47,6 +47,7 @@ public class DataPreprocess {
      */
     public static int num_doc = 0;
     public static int total_docLen = 0;
+    public static float avgLen;
     /**
      * Text Pre-processing Mapper Class Input type: gzip files
      */
@@ -122,6 +123,46 @@ public class DataPreprocess {
         }
     }
 
+    public static class DocCoefMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+
+        public void map(LongWritable offset, Text lineText, Context context)
+                throws IOException, InterruptedException{
+
+            String line = lineText.toString();
+
+            line = line.trim();
+            if (line.equals("")) {
+                return;
+            }
+
+            Matcher head_matcher = HEAD_PATTERN.matcher(line);
+            if (head_matcher.find()) {
+                String key_title = head_matcher.group(0);
+                int docLen = line.split("\\s+").length;
+                //numDoc+=1;
+                //sumLen+=docLen;
+                docLen += 1;
+                context.write(new Text(key_title), new IntWritable(docLen));
+            }
+        }
+    }
+
+    public static class DocCoefReducer extends Reducer<Text, IntWritable, Text, FloatWritable> {
+        public void setup(Context context)
+                throws IOException, InterruptedException{
+            avgLen = (float)total_docLen/(float)num_doc;
+
+        }
+        public void reduce(Text title, Iterable<IntWritable> docLens, Context context)
+                throws IOException, InterruptedException{
+            float docCoe = (float) 0.375;
+            for (IntWritable docLen : docLens){
+                docCoe+= 1.125 * docLen.get() / avgLen;
+            }
+            context.write(new Text(title), new FloatWritable(docCoe));
+        }
+    }
+
     /**
      * The type Doc tf mapper.
      * Output the Documents' length
@@ -129,11 +170,7 @@ public class DataPreprocess {
     public static class DocTFMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
         private Text word = new Text();
         private final static IntWritable one = new IntWritable(1);
-        private MultipleOutputs<Text, IntWritable> mos;
-
-        protected void setup(Context context) {
-            mos = new MultipleOutputs<>(context);
-        }
+        //private MultipleOutputs<Text, IntWritable> mos;
         public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
             Matcher head_matcher = HEAD_PATTERN.matcher(line);
@@ -147,10 +184,10 @@ public class DataPreprocess {
                     context.write(word, one);
                 }
                 total_docLen+=docLen;
-                mos.write("DocLen", new Text(key_title), new IntWritable(docLen));
             }
         }
     }
+
 
 
     /**
@@ -169,6 +206,8 @@ public class DataPreprocess {
             context.write(word, new IntWritable(termOcc));
         }
     }
+
+
     /**
      * The type Idf mapper.
      */
@@ -206,15 +245,6 @@ public class DataPreprocess {
                 context.write(new Text(word + "-" + article_tf[0]), new FloatWritable(IDF));
             }
         }
-    }
-
-    public static class DocCoefMapper extends Mapper<LongWritable, Text, Text, FloatWritable>{
-        public void map(LongWritable offset, Text lineText, Context context)
-                throws IOException, InterruptedException{
-            String line = lineText.toString();
-            String title = line.split("\t")[0];
-        }
-
     }
 
     /**
@@ -261,7 +291,7 @@ public class DataPreprocess {
         job2.setMapOutputValueClass(IntWritable.class);
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(FloatWritable.class);
-        MultipleOutputs.addNamedOutput(job2, "DocLen", TextOutputFormat.class, Text.class, IntWritable.class);
+        //MultipleOutputs.addNamedOutput(job2, "DocLen", TextOutputFormat.class, Text.class, IntWritable.class);
         FileInputFormat.addInputPath(job2, new Path(s1_outdir+"/part*"));
         FileOutputFormat.setOutputPath(job2, new Path(s2_outdir));
         if (!job2.waitForCompletion(true)){
@@ -285,7 +315,21 @@ public class DataPreprocess {
 
         FileInputFormat.addInputPath(job3, new Path(s2_outdir+"/part*"));
         FileOutputFormat.setOutputPath(job3, new Path(s3_outdir));
-        System.exit(job3.waitForCompletion(true) ? 0 : 1);
+        job3.waitForCompletion(true);
+
+        String s4_outdir = output_dir+"/4coef";
+        Job job4 = Job.getInstance(conf, "Coefficient");
+        job4.setJarByClass(DataPreprocess.class);
+        job4.setMapperClass(DataPreprocess.DocCoefMapper.class);
+        job4.setReducerClass(DataPreprocess.DocCoefReducer.class);
+        job4.setMapOutputValueClass(IntWritable.class);
+
+        job4.setOutputKeyClass(Text.class);
+        job4.setOutputValueClass(FloatWritable.class);
+        MultipleInputs.addInputPath(job4, new Path(s1_outdir+"/part*"), TextInputFormat.class);
+        FileOutputFormat.setOutputPath(job4, new Path(s4_outdir));
+
+        job4.waitForCompletion(true);
     }
 
     /**
