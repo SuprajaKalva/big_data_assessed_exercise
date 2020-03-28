@@ -6,6 +6,7 @@ MapReduce/DocProcessMapReduce.class
 MapReduce/SplitMapReduce$SplitCombiner.class
 MapReduce/DocProcessMapReduce$TPReducer.class
 MapReduce/DocProcessMapReduce$DocTFReducer.class
+MapReduce/PageRanking$BM25Mapper2.class
 MapReduce/TextProcMapReduce.class
 MapReduce/DocProcessMapReduce$TPMapper.class
 MapReduce/DocTF$DocTFMapper.class
@@ -18,6 +19,8 @@ MapReduce/DocTF.class
 MapReduce/DataPreprocess$IDFMapper.class
 MapReduce/TestPorterStemmer.class
 MapReduce/DataPreprocess$DocTFReducer.class
+MapReduce/PageRanking$BM25Reducer.class
+MapReduce/PageRanking$BM25Mapper3.class
 MapReduce/TestMapReduce$IntSumReducer.class
 MapReduce/DocTF$DocTFReducer.class
 MapReduce/TFIDFMapReduce.class
@@ -33,12 +36,15 @@ MapReduce/DocTF$TPReducer.class
 MapReduce/TFIDFMapReduce$DocTFReducer.class
 MapReduce/TFIDFMapReduce$TPReducer.class
 MapReduce/DocProcessMapReduce$IDFReducer.class
+MapReduce/PageRanking$BM25Mapper.class
 MapReduce/SplitMapReduce$SplitReducer.class
 MapReduce/DocProcessMapReduce$IDFMapper.class
 MapReduce/TextProcMapReduce$TPReducer.class
 MapReduce/DataPreprocess.class
+MapReduce/PageRanking$BM25ConReducer.class
 MapReduce/SplitMapReduce.class
 MapReduce/DataPreprocess$TPReducer.class
+MapReduce/PageRanking$BM25Mapper1.class
 MapReduce/TextPreprocess$MT_Unzip.class
 MapReduce/DataPreprocess$DocCoefReducer.class
 MapReduce/DocProcessMapReduce$DocTFMapper.class

@@ -151,7 +151,6 @@ public class DataPreprocess {
         public void setup(Context context)
                 throws IOException, InterruptedException{
             avgLen = (float)total_docLen/(float)num_doc;
-
         }
         public void reduce(Text title, Iterable<IntWritable> docLens, Context context)
                 throws IOException, InterruptedException{
@@ -233,17 +232,15 @@ public class DataPreprocess {
     public static class IDFReducer extends Reducer<Text, Text, Text, FloatWritable> {
         public void reduce(Text word, Iterable<Text> values, Context context) throws IOException, InterruptedException {
             ArrayList<String> valCache = new ArrayList<>();
-
             for (Text value : values) {
                 valCache.add(value.toString());
             }
-            float IDF;
-
+            float IDF = (float) Math.log10(1 + (num_doc / valCache.size()));
             for (int i = 0; i < valCache.size(); i++) {
-                IDF = (float) Math.log10(1 + (num_doc / valCache.size()));
                 String[] article_tf = (valCache.get(i)).toString().split("=");
-                context.write(new Text(word + "-" + article_tf[0]), new FloatWritable(IDF));
+                context.write(new Text(word+"-"+article_tf[0]), new FloatWritable(IDF));
             }
+
         }
     }
 
