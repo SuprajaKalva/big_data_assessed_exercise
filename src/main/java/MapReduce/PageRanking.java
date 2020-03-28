@@ -32,13 +32,27 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The type Page ranking.
+ * PageRanking Class
+ *
+ * Take the result of DataPreprocess.java as input.
+ *
+ * Stage 1: BM25 Calculation
+ *      Mappers:
+ *          BM25Mapper1 takes Term Occurrence file as input;
+ *          BM25Mapper2 takes Document Coefficient file as input;
+ *          BM25Mapper3 takes IDF file as input;
+ *      Reducer:
+ *          BM25Reducer will handle all k-v pairs above to calculate
+ *          the BM25 score for single query term.
+ * Stage 2: BM25 Conclusion
+ *      Mapper:
+ *          BM25Mapper takes the BM25Reducer's result as input
+ *      Reducer:
+ *          BM25ConReducer sums up the scores for each document.
+ *
  */
 public class PageRanking {
     private static String queryText="";
-    private String queryFile = "src/main/resources/temp_query.txt";
-
-
     /**
      * Query input.
      *
@@ -50,21 +64,12 @@ public class PageRanking {
         //String s = br.readLine();
         String s = "wotanism details troth";
         this.queryText = s;
-        StringTokenizer itr = new StringTokenizer(this.queryText);
-
-
-        BufferedWriter writer = new BufferedWriter(new FileWriter(this.queryFile));
-        while(itr.hasMoreTokens()){
-            writer.write(itr.nextToken()+"\n");
-        }
-        writer.close();
     }
-
 
     /**
      * The type Bm 25 mapper 1.
-     * <p>
-     * Handle the Term Occurrence File
+     *
+     * For the Term Occurrence File
      */
     public static class BM25Mapper1 extends Mapper<LongWritable, Text, Text, Text>{
         /**
@@ -75,12 +80,28 @@ public class PageRanking {
          * The Query set.
          */
         public Set<String> querySet;
+
+        /**
+         * Read the configuration, which contains the query terms.
+         * @param context
+         */
         public void setup(Context context){
+
             Configuration conf = context.getConfiguration();
             String temp_query = conf.get("query");
             this.query = temp_query.split("\\s+");
             this.querySet = new HashSet<>(Arrays.asList(this.query));
         }
+
+        /**
+         * Emit <doc-term, OCC-occurrence>
+         * @param offset
+         * @param lineText
+         * @param context
+         * @throws IOException
+         * @throws InterruptedException
+         *
+         */
         public void map(LongWritable offset, Text lineText, Context context)
                 throws IOException, InterruptedException{
             String line = lineText.toString();
@@ -115,6 +136,15 @@ public class PageRanking {
             this.query = temp_query.split("\\s+");
             this.querySet = new HashSet<>(Arrays.asList(this.query));
         }
+
+        /**
+         * Emit <doc-term, COE-coefficient>
+         * @param offset
+         * @param lineText
+         * @param context
+         * @throws IOException
+         * @throws InterruptedException
+         */
         public void map(LongWritable offset, Text lineText, Context context)
                 throws IOException, InterruptedException{
             String line = lineText.toString();
@@ -122,12 +152,15 @@ public class PageRanking {
             String[] k_v = line.split("\t");
             String doc = k_v[0];
             String coef = k_v[1];
-            for(String item : query){
-                context.write(new Text(doc+"-"+item), new Text("COE-"+coef));
+            for(String term : query){
+                context.write(new Text(doc+"-"+term), new Text("COE-"+coef));
             }
         }
     }
 
+    /**
+     * The type Bm 25 mapper 3.
+     */
     public static class BM25Mapper3 extends Mapper<LongWritable, Text, Text, Text>{
         /**
          * The Query.
@@ -157,6 +190,10 @@ public class PageRanking {
         }
     }
 
+    /**
+     * Stage 1
+     * The type Bm 25 reducer.
+     */
     public static class BM25Reducer extends Reducer<Text, Text, Text, Text>{
         public void reduce(Text doc_term, Iterable<Text> args, Context context)
                 throws IOException, InterruptedException{
@@ -181,19 +218,11 @@ public class PageRanking {
             context.write(new Text(doc), new Text(String.valueOf(bm25)));
         }
     }
-/*
-    public static class BM25Reducer extends Reducer<Text, FloatWritable, Text, FloatWritable>{
-        public void reduce(Text doc, Iterable<Text> values, Context context)
-                throws IOException, InterruptedException{
-            float sum = (float) 0.0;
-            for(Text value:values){
-                sum+=Float.parseFloat(value.toString());
-            }
-            context.write(new Text(doc), new FloatWritable(sum));
-        }
-    }
-*/
 
+    /**
+     * Stage 2
+     * The type Bm 25 mapper.
+     */
     public static class BM25Mapper extends Mapper<LongWritable, Text, Text, FloatWritable>{
         public void map(LongWritable offset, Text lineText, Context context)
                 throws IOException, InterruptedException{
@@ -204,6 +233,10 @@ public class PageRanking {
         }
     }
 
+    /**
+     * Stage 2
+     * The type Bm 25 con reducer.
+     */
     public static class BM25ConReducer extends Reducer<Text, FloatWritable, Text, FloatWritable>{
         public void reduce(Text doc, Iterable<FloatWritable> values, Context context)
                 throws IOException, InterruptedException{
@@ -214,37 +247,47 @@ public class PageRanking {
             context.write(new Text(doc), new FloatWritable(sum));
         }
     }
+
     /**
      * Online run.
-     *
+     * Calculate the query terms' BM25 scores.
      * @param args the args
-     * @throws IOException the io exception
+     * @throws IOException            the io exception
+     * @throws ClassNotFoundException the class not found exception
+     * @throws InterruptedException   the interrupted exception
      */
     public static void onlineRun(String [] args)
             throws IOException, ClassNotFoundException, InterruptedException {
+
         /**
          * Stage 1: BM25 Calculation
          */
 
         String s1_output_dir = args[1]+"/bm25_raw";
-        String input_dir1 = "/Users/meow/Documents/Projects/UoG_S2/BD/Report/Data/output/output_20/2tf/part-r-00000";
-        String input_dir2 = "/Users/meow/Documents/Projects/UoG_S2/BD/Report/Data/output/output_20/4coef/part-r-00000";
-        String input_dir3 = "/Users/meow/Documents/Projects/UoG_S2/BD/Report/Data/output/output_20/3idf/part-r-00000";
+        String input_dir = args[0];
+
+        String input_dir1 = input_dir+"/2tf/part-r-00000";
+        String input_dir2 = input_dir+"/4coef/part-r-00000";
+        String input_dir3 = input_dir+"/3idf/part-r-00000";
         Configuration conf = new Configuration();
         conf.set("query", "wotanism details troth");
         Job job1 = Job.getInstance(conf, "BM25 Calculation");
         job1.setJarByClass(PageRanking.class);
 
+        /**
+         * Set mappers to different input files
+         */
         MultipleInputs.addInputPath(job1, new Path(input_dir1), TextInputFormat.class, PageRanking.BM25Mapper1.class);
         MultipleInputs.addInputPath(job1, new Path(input_dir2), TextInputFormat.class, PageRanking.BM25Mapper2.class);
         MultipleInputs.addInputPath(job1, new Path(input_dir3), TextInputFormat.class, PageRanking.BM25Mapper3.class);
+
+        //I'd really like to use combiner to do the rest job. However I didn't make it :c
         //job1.setCombinerClass(PageRanking.BM25Combiner.class);
         job1.setReducerClass(PageRanking.BM25Reducer.class);
 
         job1.setMapOutputValueClass(Text.class);
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(FloatWritable.class);
-        // FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
 
         FileOutputFormat.setOutputPath(job1, new Path(s1_output_dir));
 
@@ -281,14 +324,12 @@ public class PageRanking {
      * The entry point of application.
      *
      * @param args the input arguments
-     * @throws IOException the io exception
+     * @throws IOException            the io exception
+     * @throws InterruptedException   the interrupted exception
+     * @throws ClassNotFoundException the class not found exception
      */
-//public static class PRMapper extends Mapper<>
     public static void main(String [] args)
             throws IOException, InterruptedException, ClassNotFoundException {
-
-        //PageRanking pr = new PageRanking();
-        //pr.QueryInput();
 
         onlineRun(args);
     }
