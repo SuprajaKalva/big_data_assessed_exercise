@@ -22,7 +22,7 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import sun.jvm.hotspot.debugger.Page;
+//import sun.jvm.hotspot.debugger.Page;  - why did you include this import?
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -263,8 +263,8 @@ public class PageRanking {
          * Stage 1: BM25 Calculation
          */
 
-        String s1_output_dir = args[1]+"/bm25_raw";
         String input_dir = args[0];
+        String s1_output_dir = args[1]+"/bm25_raw";
 
         String input_dir1 = input_dir+"/2tf/part-r-00000";
         String input_dir2 = input_dir+"/4coef/part-r-00000";
@@ -330,7 +330,6 @@ public class PageRanking {
      */
     public static void main(String [] args)
             throws IOException, InterruptedException, ClassNotFoundException {
-
         onlineRun(args);
     }
 }

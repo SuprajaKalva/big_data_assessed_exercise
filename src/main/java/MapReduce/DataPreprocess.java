@@ -90,6 +90,15 @@ public class DataPreprocess {
                 allWords.removeAll(stopWordList);
                 line = String.join(" ", allWords);
 
+                //Porter Stemmer
+                List<String> allWordsToStem = new ArrayList<String>(Arrays.asList(line.toLowerCase().split(" ")));
+                utils.PorterStemmer porterStemmer = new utils.PorterStemmer();
+                List<String> ported_words = new ArrayList<>();
+                allWordsToStem.forEach(word -> {
+                    ported_words.add(porterStemmer.stem(word));
+                });
+                line = String.join(" ", ported_words);
+
                 // Construct key-value pair.
                 // Key: title of articles
                 // Value: chunk of body
@@ -253,6 +262,7 @@ public class DataPreprocess {
     public static void Run(String[] args) throws Exception {
         String input_dir = args[0];
         String output_dir = args[1];
+
         String s1_outdir = output_dir + "/1tp";
         /**
          * Stage 1: Input Preprocessing
