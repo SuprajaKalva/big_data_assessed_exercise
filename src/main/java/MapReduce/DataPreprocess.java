@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
  * 1. Term occurrence
  * 2. Documents' length
  * 3. Term IDF
- *
+ * 4. Pre-compute coefficient
  * @author Molin Liu
  */
 public class DataPreprocess {
@@ -80,7 +80,7 @@ public class DataPreprocess {
             if (!titleMatcher.find()) {
                 // Remove extra space
                 line = line.replaceAll(" +", " ");
-                // Remove non-title ]] symbols.
+                // Remove unbound ]] symbols.
                 // More detail refer to
                 // https://github.com/SuprajaKalva/big_data_assessed_exercise/issues/1
                 line = line.replaceAll("\\]\\]", "");
