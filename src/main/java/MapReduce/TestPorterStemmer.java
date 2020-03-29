@@ -19,7 +19,7 @@ public class TestPorterStemmer{
     @Test
     public void testStemming() throws Exception {
         List<String> words = Arrays.asList("eating", "going", "done", "eaten");
-        utils.PorterStemmer porterStemmer = new utils.PorterStemmer();
+        MapReduce.PorterStemmer porterStemmer = new MapReduce.PorterStemmer();
 
         List<String> ported_words = new ArrayList<>();
 

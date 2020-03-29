@@ -1,4 +1,4 @@
-package utils;
+package MapReduce;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;

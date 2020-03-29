@@ -92,7 +92,7 @@ public class DataPreprocess {
 
                 //Porter Stemmer
                 List<String> allWordsToStem = new ArrayList<String>(Arrays.asList(line.toLowerCase().split(" ")));
-                utils.PorterStemmer porterStemmer = new utils.PorterStemmer();
+                MapReduce.PorterStemmer porterStemmer = new MapReduce.PorterStemmer();
                 List<String> ported_words = new ArrayList<>();
                 allWordsToStem.forEach(word -> {
                     ported_words.add(porterStemmer.stem(word));
