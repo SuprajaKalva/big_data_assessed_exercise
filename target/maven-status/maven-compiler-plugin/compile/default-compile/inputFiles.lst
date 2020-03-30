@@ -1,6 +1,5 @@
-/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/TextPreprocess.java
-/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/SplitMapReduce.java
-/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/TFIDFMapReduce.java
-/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/SplitDoc.java
-/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/TestMapReduce.java
-/home/molin/Documents/big_data_assessed_exercise/src/main/java/MapReduce/WikiDocument.java
+/Users/meow/Documents/Projects/UoG_S2/BD/Merge/src/main/java/MapReduce/DocProcessMapReduce.java
+/Users/meow/Documents/Projects/UoG_S2/BD/Merge/src/main/java/MapReduce/DataPreprocess.java
+/Users/meow/Documents/Projects/UoG_S2/BD/Merge/src/main/java/MapReduce/TestPorterStemmer.java
+/Users/meow/Documents/Projects/UoG_S2/BD/Merge/src/main/java/MapReduce/PageRanking.java
+/Users/meow/Documents/Projects/UoG_S2/BD/Merge/src/main/java/MapReduce/PorterStemmer.java
