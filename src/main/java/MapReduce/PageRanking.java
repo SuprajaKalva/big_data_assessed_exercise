@@ -60,9 +60,9 @@ public class PageRanking {
      */
     public void QueryInput() throws IOException {
         System.out.println("Query:");
-        //BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        //String s = br.readLine();
-        String s = "wotanism details troth";
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        String s = br.readLine();
+        //String s = "wotanism details troth";
         this.queryText = s;
     }
 
@@ -260,6 +260,13 @@ public class PageRanking {
             throws IOException, ClassNotFoundException, InterruptedException {
 
         /**
+         * Get input from user
+         */
+        System.out.println("Query:");
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        String s = br.readLine();
+
+        /**
          * Stage 1: BM25 Calculation
          */
 
@@ -270,7 +277,7 @@ public class PageRanking {
         String input_dir2 = input_dir+"/4coef/part-r-00000";
         String input_dir3 = input_dir+"/3idf/part-r-00000";
         Configuration conf = new Configuration();
-        conf.set("query", "wotanism details troth");
+        conf.set("query", s);
         Job job1 = Job.getInstance(conf, "BM25 Calculation");
         job1.setJarByClass(PageRanking.class);
 
