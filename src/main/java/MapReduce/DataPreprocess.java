@@ -1,7 +1,7 @@
 package MapReduce;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
@@ -15,8 +15,9 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -47,21 +48,23 @@ public class DataPreprocess {
      */
     public static int num_doc = 0;
     public static int total_docLen = 0;
-    public static float avgLen;
+    public static float avgLen = (float)0.0;
     /**
      * Text Pre-processing Mapper Class Input type: gzip files
      */
     public static class TPMapper extends Mapper<LongWritable, Text, Text, Text> {
         private static String temp_title;
-        private static List<String> stopWordList;
+        //private static List<String> stopWordList;
 
         protected void setup(Context context) throws IOException, InterruptedException {
+            /**
             try {
                 // BufferedReader fis = new BufferedReader(new FileReader(stopWordFile_PATH));
-                this.stopWordList = Files.readAllLines(Paths.get("src/main/resources/stopword-list.txt"));
+                //this.stopWordList = Files.readAllLines(Paths.get("src/main/resources/stopword-list.txt"));
             } catch (IOException ioe) {
                 System.err.println("Exception while reading stop word file" + ioe.toString());
             }
+             */
         }
 
         public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
@@ -70,16 +73,16 @@ public class DataPreprocess {
             line = line.trim();
             // Remove subtitle
             line = line.replaceAll("={2}.*={2}", "");
-            // Remove non-ASCII characters
-            line = line.replaceAll("[^A-Za-z0-9\\[\\]]", " ");
+            // Remove extra space
+            line = line.replaceAll(" +", " ");
             Matcher titleMatcher = HEAD_PATTERN.matcher(line);
             if (line.equals("")) {
                 return;
             }
             // See if the current line is title:
             if (!titleMatcher.find()) {
-                // Remove extra space
-                line = line.replaceAll(" +", " ");
+                // Remove non-ASCII characters
+                line = line.replaceAll("[^A-Za-z0-9\\[\\]]", " ");
                 // Remove unbound ]] symbols.
                 // More detail refer to
                 // https://github.com/SuprajaKalva/big_data_assessed_exercise/issues/1
@@ -87,7 +90,7 @@ public class DataPreprocess {
 
                 // Remove stopwords
                 List<String> allWords = new ArrayList<String>(Arrays.asList(line.toLowerCase().split(" ")));
-                allWords.removeAll(stopWordList);
+                //allWords.removeAll(stopWordList);
                 line = String.join(" ", allWords);
 
                 //Porter Stemmer
@@ -127,7 +130,7 @@ public class DataPreprocess {
                     article_body += " " + body.toString();
                 }
             }
-            num_doc += 1;
+            //num_doc += 1;
             context.write(temp_title, new Text(article_body));
         }
     }
@@ -148,18 +151,19 @@ public class DataPreprocess {
             if (head_matcher.find()) {
                 String key_title = head_matcher.group(0);
                 int docLen = line.split("\\s+").length;
-                //numDoc+=1;
-                //sumLen+=docLen;
-                docLen += 1;
                 context.write(new Text(key_title), new IntWritable(docLen));
             }
         }
     }
 
     public static class DocCoefReducer extends Reducer<Text, IntWritable, Text, FloatWritable> {
+        private float avgLen;
         public void setup(Context context)
                 throws IOException, InterruptedException{
-            avgLen = (float)total_docLen/(float)num_doc;
+            Configuration conf = context.getConfiguration();
+            this.avgLen = Float.parseFloat(conf.get("average"));
+            //avgLen = (float)total_docLen/(float)num_doc;
+            System.out.println("The average length is " + avgLen);
         }
         public void reduce(Text title, Iterable<IntWritable> docLens, Context context)
                 throws IOException, InterruptedException{
@@ -178,21 +182,34 @@ public class DataPreprocess {
     public static class DocTFMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
         private Text word = new Text();
         private final static IntWritable one = new IntWritable(1);
-        //private MultipleOutputs<Text, IntWritable> mos;
+        private MultipleOutputs<Text, IntWritable> mos;
+
+        public void setup(Context context){
+            mos = new MultipleOutputs<>(context);
+        }
+
         public void map(LongWritable offset, Text lineText, Context context) throws IOException, InterruptedException {
             String line = lineText.toString();
+            line = line.trim();
+            if (line.equals("")){
+                return;
+            }
             Matcher head_matcher = HEAD_PATTERN.matcher(line);
             if (head_matcher.find()) {
                 String key_title = head_matcher.group(0);
+                int temp_docLen = line.split("\\s+").length;
+                mos.write("DocLen", new Text(key_title), new IntWritable(temp_docLen));
                 StringTokenizer itr = new StringTokenizer(line);
-                int docLen = 0;
                 while (itr.hasMoreTokens()) {
-                    docLen += 1;
                     word.set(itr.nextToken() + "-" + key_title);
                     context.write(word, one);
                 }
-                total_docLen+=docLen;
+                //total_docLen+=docLen;
             }
+        }
+        public void cleanup(Context context)
+                throws IOException, InterruptedException {
+            mos.close();
         }
     }
 
@@ -244,7 +261,7 @@ public class DataPreprocess {
             for (Text value : values) {
                 valCache.add(value.toString());
             }
-            float IDF = (float) Math.log10(1 + (num_doc / valCache.size()));
+            float IDF = (float) Math.log10((num_doc-valCache.size()+0.5)/(valCache.size()+0.5));
             for (int i = 0; i < valCache.size(); i++) {
                 String[] article_tf = (valCache.get(i)).toString().split("=");
                 context.write(new Text(word+"-"+article_tf[0]), new FloatWritable(IDF));
@@ -252,6 +269,71 @@ public class DataPreprocess {
 
         }
     }
+
+
+    public static float averageLen(Path doclen_dir) throws IOException {
+        float average;
+        int num_doc = 0;
+        int total_len = 0;
+        Configuration conf = new Configuration();
+        try{
+            FileSystem fs = FileSystem.get(conf);
+            FileStatus[] fileStatus = fs.listStatus(doclen_dir, new PathFilter(){
+                @Override
+                public boolean accept(Path path) {
+                    return path.getName().startsWith("DocLen");
+                }
+            });
+            for(FileStatus status : fileStatus){
+                FSDataInputStream fdsis = fs.open(status.getPath());
+                BufferedReader br = new BufferedReader(new InputStreamReader(fdsis));
+                String line = "";
+                while ((line = br.readLine()) != null) {
+                    num_doc+=1;
+                    total_len+=Integer.parseInt(line.split("\t")[1]);
+                }
+                br.close();
+                System.out.println(status.getPath().toString());
+            }
+            /**
+            FSDataInputStream fdsis = fs.open(doclen_dir);
+            BufferedReader br = new BufferedReader(new InputStreamReader(fdsis));
+            String line = "";
+            while ((line = br.readLine()) != null) {
+                num_doc+=1;
+                total_len+=Integer.parseInt(line.split("\t")[1]);
+            }
+            br.close();
+             */
+        }catch (Exception e){
+            System.out.println("Error at averageLen");
+        }
+
+        /**
+        Path dir = doclen_dir;
+        File[] foundFiles = dir.listFiles(new FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                return name.startsWith("DocLen");
+            }
+        });
+        for(File file:foundFiles){
+            System.out.println(file.getName());
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            String line;
+            while((line=br.readLine())!=null){
+                num_doc+=1;
+                total_len+=Integer.parseInt(line.split("\t")[1]);
+            }
+        }
+         **/
+        average = (float)total_len/num_doc;
+        return average;
+    }
+    @Test
+    void avergeLenTest() throws IOException {
+        System.out.println(averageLen(new Path("/Users/meow/Documents/Projects/UoG_S2/BD/Report/Data/output/output_qt/data/2tf")));
+    }
+
 
     /**
      * Tfidf run.
@@ -298,13 +380,19 @@ public class DataPreprocess {
         job2.setMapOutputValueClass(IntWritable.class);
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(FloatWritable.class);
-        //MultipleOutputs.addNamedOutput(job2, "DocLen", TextOutputFormat.class, Text.class, IntWritable.class);
+        MultipleOutputs.addNamedOutput(job2, "DocLen", TextOutputFormat.class, Text.class, IntWritable.class);
         FileInputFormat.addInputPath(job2, new Path(s1_outdir+"/part*"));
         FileOutputFormat.setOutputPath(job2, new Path(s2_outdir));
         if (!job2.waitForCompletion(true)){
             System.exit(1);
         }
 
+        /**
+         * Calculate the average length of documents
+         */
+        float average_len = averageLen(new Path(s2_outdir+"/DocLen"));
+        Configuration s4_conf = new Configuration();
+        s4_conf.set("average", String.valueOf(average_len));
         /**
          * Stage 3: TF-IDF
          */
@@ -325,7 +413,7 @@ public class DataPreprocess {
         job3.waitForCompletion(true);
 
         String s4_outdir = output_dir+"/4coef";
-        Job job4 = Job.getInstance(conf, "Coefficient");
+        Job job4 = Job.getInstance(s4_conf, "Coefficient");
         job4.setJarByClass(DataPreprocess.class);
         job4.setMapperClass(DataPreprocess.DocCoefMapper.class);
         job4.setReducerClass(DataPreprocess.DocCoefReducer.class);
