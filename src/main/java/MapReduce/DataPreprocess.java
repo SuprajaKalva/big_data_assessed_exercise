@@ -18,8 +18,6 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -255,9 +253,9 @@ public class DataPreprocess {
                 valCache.add(value.toString());
             }
             float IDF = (float) Math.log10((this.num_doc-valCache.size()+0.5)/(valCache.size()+0.5));
-            for (int i = 0; i < valCache.size(); i++) {
-                String[] article_tf = (valCache.get(i)).toString().split("=");
-                context.write(new Text(word+"-"+article_tf[0]), new FloatWritable(IDF));
+            for (String s : valCache) {
+                String[] article_tf = s.toString().split("=");
+                context.write(new Text(word + "-" + article_tf[0]), new FloatWritable(IDF));
             }
 
         }
@@ -304,8 +302,7 @@ public class DataPreprocess {
             e.printStackTrace();
         }
         average = (float)total_len/num_doc;
-        float [] result = {average, (float)num_doc};
-        return result;
+      return new float[]{average, (float)num_doc};
     }
   /**
    * Averge len test.
@@ -314,7 +311,7 @@ public class DataPreprocess {
    */
   @Test
   void avergeLenTest() throws IOException {
-        System.out.println(averageLen(new Path("/Users/meow/Documents/Projects/UoG_S2/BD/Report/Data/output/output_qt/data/2tf")));
+        System.out.println(Arrays.toString(averageLen(new Path("/Users/meow/Documents/Projects/UoG_S2/BD/Report/Data/output/output_qt/data/2tf"))));
     }
 
   /**
@@ -328,7 +325,7 @@ public class DataPreprocess {
         String output_dir = args[1];
 
         String s1_outdir = output_dir + "/1tp";
-        /**
+        /*
          * Stage 1: Input Preprocessing
          */
         Configuration conf = new Configuration();
@@ -350,9 +347,10 @@ public class DataPreprocess {
             System.exit(1);
         }
 
-        /**
+        /*
          * Stage 2: TF
          */
+
         String s2_outdir = output_dir + "/2tf";
         Job job2 = Job.getInstance(conf, "TF");
         job2.setJarByClass(DataPreprocess.class);
@@ -369,7 +367,7 @@ public class DataPreprocess {
             System.exit(1);
         }
 
-        /**
+        /*
          * Calculate the average length of documents
          */
         float[] result = averageLen(new Path(s2_outdir));
@@ -382,7 +380,7 @@ public class DataPreprocess {
         Configuration s3_conf = new Configuration();
         s3_conf.set("num_doc", String.valueOf(num_doc));
         System.out.println("The number of documents is "+ num_doc);
-        /**
+        /*
          * Stage 3: TF-IDF
          */
         String s3_outdir = output_dir + "/3idf";
