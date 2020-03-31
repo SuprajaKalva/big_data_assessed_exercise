@@ -30,29 +30,24 @@ import java.util.regex.Pattern;
 /**
  * Data Preprocess Class
  *
- * Output file:
- * 1. Term occurrence
- * 2. Documents' length
- * 3. Term IDF
- * 4. Pre-compute coefficient
+ * <p>Output file: 1. Term occurrence 2. Documents' length 3. Term IDF 4. Pre-compute coefficient
+ *
  * @author Molin Liu
  */
 public class DataPreprocess {
 
-    /**
-     * Text Preprocessing Mapper
-     */
-    public static final Pattern HEAD_PATTERN = Pattern.compile("^\\[{2}.*\\]{2}");
-    /**
-     * The constant num_doc.
-     */
-    public static int num_doc = 0;
-    public static int total_docLen = 0;
-    public static float avgLen = (float)0.0;
-    /**
-     * Text Pre-processing Mapper Class Input type: gzip files
-     */
-    public static class TPMapper extends Mapper<LongWritable, Text, Text, Text> {
+  /** Text Preprocessing Mapper */
+  public static final Pattern HEAD_PATTERN = Pattern.compile("^\\[{2}.*\\]{2}");
+  /** The constant num_doc. */
+  public static int num_doc = 0;
+
+  /** The constant total_docLen. */
+  public static int total_docLen = 0;
+
+  /** The constant avgLen. */
+  public static float avgLen = (float) 0.0;
+  /** Text Pre-processing Mapper Class Input type: gzip files */
+  public static class TPMapper extends Mapper<LongWritable, Text, Text, Text> {
         private static String temp_title;
         //private static List<String> stopWordList;
 
@@ -114,11 +109,8 @@ public class DataPreprocess {
         }
     }
 
-    /**
-     * Text Pre-processing Reducer Concatenate all chunks belong to the same
-     * article.
-     */
-    public static class TPReducer extends Reducer<Text, Text, Text, Text> {
+  /** Text Pre-processing Reducer Concatenate all chunks belong to the same article. */
+  public static class TPReducer extends Reducer<Text, Text, Text, Text> {
 
         public void reduce(Text temp_title, Iterable<Text> bodys, Context context)
                 throws IOException, InterruptedException {
@@ -135,7 +127,8 @@ public class DataPreprocess {
         }
     }
 
-    public static class DocCoefMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+  /** The type Doc coef mapper. */
+  public static class DocCoefMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
 
         public void map(LongWritable offset, Text lineText, Context context)
                 throws IOException, InterruptedException{
@@ -156,13 +149,18 @@ public class DataPreprocess {
         }
     }
 
-    public static class DocCoefReducer extends Reducer<Text, IntWritable, Text, FloatWritable> {
+  /** The type Doc coef reducer. */
+  public static class DocCoefReducer extends Reducer<Text, IntWritable, Text, FloatWritable> {
         private float avgLen;
+        private MultipleOutputs<Text, FloatWritable> mos;
         public void setup(Context context)
                 throws IOException, InterruptedException{
+            mos = new MultipleOutputs<>(context);
             Configuration conf = context.getConfiguration();
-            this.avgLen = Float.parseFloat(conf.get("average"));
+            this.avgLen = Float.parseFloat(conf.get("average").trim());
             //avgLen = (float)total_docLen/(float)num_doc;
+            mos.write("Avg", new Text("Avg"), new FloatWritable(this.avgLen));
+            mos.close();
             System.out.println("The average length is " + avgLen);
         }
         public void reduce(Text title, Iterable<IntWritable> docLens, Context context)
@@ -175,11 +173,8 @@ public class DataPreprocess {
         }
     }
 
-    /**
-     * The type Doc tf mapper.
-     * Output the Documents' length
-     */
-    public static class DocTFMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+  /** The type Doc tf mapper. Output the Documents' length */
+  public static class DocTFMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
         private Text word = new Text();
         private final static IntWritable one = new IntWritable(1);
         private MultipleOutputs<Text, IntWritable> mos;
@@ -213,13 +208,8 @@ public class DataPreprocess {
         }
     }
 
-
-
-    /**
-     * The type Doc tf reducer.
-     * The output file is term occurrences in each document.
-     */
-    public static class DocTFReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+  /** The type Doc tf reducer. The output file is term occurrences in each document. */
+  public static class DocTFReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
         public void reduce(Text word, Iterable<IntWritable> counts, Context context)
                 throws IOException, InterruptedException {
             int sum = 0;
@@ -232,11 +222,8 @@ public class DataPreprocess {
         }
     }
 
-
-    /**
-     * The type Idf mapper.
-     */
-    public static class IDFMapper extends Mapper<LongWritable, Text, Text, Text> {
+  /** The type Idf mapper. */
+  public static class IDFMapper extends Mapper<LongWritable, Text, Text, Text> {
 
         public void map(LongWritable offset, Text lineText, Context context)
                 throws IOException, InterruptedException {
@@ -250,18 +237,24 @@ public class DataPreprocess {
         }
     }
 
-    /**
-     * The type Idf reducer.
-     * <p>
-     * Output the IDF
-     */
-    public static class IDFReducer extends Reducer<Text, Text, Text, FloatWritable> {
+  /**
+   * The type Idf reducer.
+   *
+   * <p>Output the IDF
+   */
+  public static class IDFReducer extends Reducer<Text, Text, Text, FloatWritable> {
+        private int num_doc;
+        public void setup(Context context){
+            Configuration conf = context.getConfiguration();
+            this.num_doc = (int)Float.parseFloat(conf.get("num_doc").trim());
+        }
+
         public void reduce(Text word, Iterable<Text> values, Context context) throws IOException, InterruptedException {
             ArrayList<String> valCache = new ArrayList<>();
             for (Text value : values) {
                 valCache.add(value.toString());
             }
-            float IDF = (float) Math.log10((num_doc-valCache.size()+0.5)/(valCache.size()+0.5));
+            float IDF = (float) Math.log10((this.num_doc-valCache.size()+0.5)/(valCache.size()+0.5));
             for (int i = 0; i < valCache.size(); i++) {
                 String[] article_tf = (valCache.get(i)).toString().split("=");
                 context.write(new Text(word+"-"+article_tf[0]), new FloatWritable(IDF));
@@ -270,78 +263,67 @@ public class DataPreprocess {
         }
     }
 
-
-    public static float averageLen(Path doclen_dir) throws IOException {
+  /**
+   * Average len float [ ].
+   *
+   * This method is used to read the file in HDFS
+   * However it still not supports AWS s3 path.
+   * @param doclen_dir the doclen dir
+   * @return the float [ ]
+   * @throws IOException the io exception
+   */
+  public static float[] averageLen(Path doclen_dir) throws IOException {
         float average;
         int num_doc = 0;
         int total_len = 0;
         Configuration conf = new Configuration();
         try{
             FileSystem fs = FileSystem.get(conf);
+            // Read all files start with `DocLen`, which store the length of documents.
             FileStatus[] fileStatus = fs.listStatus(doclen_dir, new PathFilter(){
                 @Override
                 public boolean accept(Path path) {
                     return path.getName().startsWith("DocLen");
                 }
             });
+
             for(FileStatus status : fileStatus){
                 FSDataInputStream fdsis = fs.open(status.getPath());
                 BufferedReader br = new BufferedReader(new InputStreamReader(fdsis));
                 String line = "";
                 while ((line = br.readLine()) != null) {
                     num_doc+=1;
+                    line = line.trim();
                     total_len+=Integer.parseInt(line.split("\t")[1]);
                 }
                 br.close();
                 System.out.println(status.getPath().toString());
             }
-            /**
-            FSDataInputStream fdsis = fs.open(doclen_dir);
-            BufferedReader br = new BufferedReader(new InputStreamReader(fdsis));
-            String line = "";
-            while ((line = br.readLine()) != null) {
-                num_doc+=1;
-                total_len+=Integer.parseInt(line.split("\t")[1]);
-            }
-            br.close();
-             */
         }catch (Exception e){
             System.out.println("Error at averageLen");
+            e.printStackTrace();
         }
-
-        /**
-        Path dir = doclen_dir;
-        File[] foundFiles = dir.listFiles(new FilenameFilter() {
-            public boolean accept(File dir, String name) {
-                return name.startsWith("DocLen");
-            }
-        });
-        for(File file:foundFiles){
-            System.out.println(file.getName());
-            BufferedReader br = new BufferedReader(new FileReader(file));
-            String line;
-            while((line=br.readLine())!=null){
-                num_doc+=1;
-                total_len+=Integer.parseInt(line.split("\t")[1]);
-            }
-        }
-         **/
         average = (float)total_len/num_doc;
-        return average;
+        float [] result = {average, (float)num_doc};
+        return result;
     }
-    @Test
-    void avergeLenTest() throws IOException {
+  /**
+   * Averge len test.
+   *
+   * @throws IOException the io exception
+   */
+  @Test
+  void avergeLenTest() throws IOException {
         System.out.println(averageLen(new Path("/Users/meow/Documents/Projects/UoG_S2/BD/Report/Data/output/output_qt/data/2tf")));
     }
 
-
-    /**
-     * Tfidf run.
-     *
-     * @param args the args
-     * @throws Exception the exception
-     */
-    public static void Run(String[] args) throws Exception {
+  /**
+   * Tfidf run.
+   *
+   * @param args the args
+   * @throws Exception the exception
+   */
+  public static void Run(String[] args) throws Exception {
         String input_dir = args[0];
         String output_dir = args[1];
 
@@ -390,14 +372,21 @@ public class DataPreprocess {
         /**
          * Calculate the average length of documents
          */
-        float average_len = averageLen(new Path(s2_outdir+"/DocLen"));
+        float[] result = averageLen(new Path(s2_outdir));
+        float average_len = result[0];
         Configuration s4_conf = new Configuration();
         s4_conf.set("average", String.valueOf(average_len));
+        System.out.println("The average length of document is "+ average_len);
+
+        float num_doc = result[1];
+        Configuration s3_conf = new Configuration();
+        s3_conf.set("num_doc", String.valueOf(num_doc));
+        System.out.println("The number of documents is "+ num_doc);
         /**
          * Stage 3: TF-IDF
          */
         String s3_outdir = output_dir + "/3idf";
-        Job job3 = Job.getInstance(conf, "IDF");
+        Job job3 = Job.getInstance(s3_conf, "IDF");
         job3.setJarByClass(DataPreprocess.class);
         job3.setMapperClass(DataPreprocess.IDFMapper.class);
         job3.setReducerClass(DataPreprocess.IDFReducer.class);
@@ -422,18 +411,19 @@ public class DataPreprocess {
         job4.setOutputKeyClass(Text.class);
         job4.setOutputValueClass(FloatWritable.class);
         MultipleInputs.addInputPath(job4, new Path(s1_outdir+"/part*"), TextInputFormat.class);
+        MultipleOutputs.addNamedOutput(job4, "Avg", TextOutputFormat.class, Text.class, FloatWritable.class);
         FileOutputFormat.setOutputPath(job4, new Path(s4_outdir));
 
         job4.waitForCompletion(true);
     }
 
-    /**
-     * The entry point of application.
-     *
-     * @param args the input arguments
-     * @throws Exception the exception
-     */
-    public static void main(String[] args) throws Exception {
+  /**
+   * The entry point of application.
+   *
+   * @param args the input arguments
+   * @throws Exception the exception
+   */
+  public static void main(String[] args) throws Exception {
         Run(args);
     }
 }
