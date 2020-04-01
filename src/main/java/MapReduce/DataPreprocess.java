@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 /**
  * Data Preprocess Class
  *
- * <p>Output file: 1. Term occurrence 2. Documents' length 3. Term IDF 4. Pre-compute coefficient
+ * Output file: 1. Term occurrence 2. Documents' length 3. Term IDF 4. Pre-compute coefficient
  *
  * @author Molin Liu
  */
@@ -68,6 +68,7 @@ public class DataPreprocess {
             line = line.replaceAll("={2}.*={2}", "");
             // Remove extra space
             line = line.replaceAll(" +", " ");
+            line = line.replaceAll("-", " ");
             Matcher titleMatcher = HEAD_PATTERN.matcher(line);
             if (line.equals("")) {
                 return;
@@ -332,14 +333,10 @@ public class DataPreprocess {
         Job job1 = Job.getInstance(conf, "Text Preprocessing");
         job1.setJarByClass(DataPreprocess.class);
         job1.setMapperClass(DataPreprocess.TPMapper.class);
-        // job.setCombinerClass(SplitMapReduce.SplitReducer.class);
         job1.setReducerClass(DataPreprocess.TPReducer.class);
-        // job1.setMapOutputKeyClass(Text.class);
-        // job1.setMapOutputValueClass(Text.class);
 
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
-        // FileInputFormat.addInputPath(job, new Path(temp_file.getAbsolutePath()));
         MultipleInputs.addInputPath(job1, new Path(input_dir), TextInputFormat.class);
         FileOutputFormat.setOutputPath(job1, new Path(s1_outdir));
 
@@ -348,7 +345,7 @@ public class DataPreprocess {
         }
 
         /*
-         * Stage 2: TF
+         * Stage 2: Term Occurrence
          */
 
         String s2_outdir = output_dir + "/2tf";
@@ -381,7 +378,7 @@ public class DataPreprocess {
         s3_conf.set("num_doc", String.valueOf(num_doc));
         System.out.println("The number of documents is "+ num_doc);
         /*
-         * Stage 3: TF-IDF
+         * Stage 3: IDF
          */
         String s3_outdir = output_dir + "/3idf";
         Job job3 = Job.getInstance(s3_conf, "IDF");
@@ -392,6 +389,7 @@ public class DataPreprocess {
         job3.setMapOutputKeyClass(Text.class);
         job3.setMapOutputValueClass(Text.class);
 
+        // Set output type
         job3.setOutputKeyClass(Text.class);
         job3.setOutputValueClass(FloatWritable.class);
 
