@@ -1,35 +1,25 @@
 package MapReduce;
 
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.*;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
-import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-//import sun.jvm.hotspot.debugger.Page;  - why did you include this import?
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.StringTokenizer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 /**
  * PageRanking Class
@@ -66,6 +56,42 @@ public class PageRanking {
         this.queryText = s;
     }
 
+    public static class BM25Pair implements WritableComparable {
+        private String title;
+        private Float bm25;
+
+        public Float getBm25() {
+            return bm25;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setBm25(Float bm25) {
+            this.bm25 = bm25;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        @Override
+        public int compareTo(Object o) {
+            BM25Pair temp = (BM25Pair) o;
+            return this.bm25.compareTo(temp.bm25);
+        }
+
+        @Override
+        public void write(DataOutput dataOutput) throws IOException {
+
+        }
+
+        @Override
+        public void readFields(DataInput dataInput) throws IOException {
+
+        }
+    }
     /**
      * The type Bm 25 mapper 1.
      *
@@ -180,13 +206,26 @@ public class PageRanking {
                 throws IOException, InterruptedException{
             String line = lineText.toString();
             line = line.trim();
-            String[] k_v = line.split("\t");
-            String[] term_doc = k_v[0].split("-");
-            String term = term_doc[0];
-            String doc = term_doc[1];
-            if (this.querySet.contains(term)){
-                context.write(new Text(doc+"-"+term), new Text("IDF-"+k_v[1]));
+            if(line.equals("")){
+                return;
             }
+            String[] k_v = line.split("\t");
+            if(k_v.length==2){
+                try{
+                    String[] term_doc = k_v[0].split("-");
+                    String term = term_doc[0];
+                    String doc = term_doc[1];
+                    if (this.querySet.contains(term)){
+                        context.write(new Text(doc+"-"+term), new Text("IDF-"+k_v[1]));
+                    }
+                }
+                catch (Exception e){
+                    System.out.println(line);
+                    e.printStackTrace();
+                }
+
+            }
+
         }
     }
 
@@ -237,17 +276,75 @@ public class PageRanking {
      * Stage 2
      * The type Bm 25 con reducer.
      */
-    public static class BM25ConReducer extends Reducer<Text, FloatWritable, Text, FloatWritable>{
+    public static class BM25ConReducer extends Reducer<Text, FloatWritable, FloatWritable, Text>{
         public void reduce(Text doc, Iterable<FloatWritable> values, Context context)
                 throws IOException, InterruptedException{
             float sum = (float) 0.0;
             for(FloatWritable value:values){
                 sum+=value.get();
             }
-            context.write(new Text(doc), new FloatWritable(sum));
+            context.write(new FloatWritable(sum), new Text(doc));
+        }
+    }
+    public static class BM25KeyComparator extends WritableComparator{
+        public BM25KeyComparator(){
+            super(FloatWritable.class, true);
+        }
+
+        @Override
+        public int compare(byte[] b1, int s1, int l1, byte[] b2, int s2, int l2) {
+            Integer v1 = ByteBuffer.wrap(b1, s1, l1).getInt();
+            Integer v2 = ByteBuffer.wrap(b2, s2, l2).getInt();
+
+            return v1.compareTo(v2) * (-1);
+        }
+    }
+    public static class BM25Comparator extends WritableComparator {
+
+        public BM25Comparator() {
+            super(BM25Pair.class, true);
+        }
+
+        @Override
+        public int compare(WritableComparable a, WritableComparable b) {
+            BM25Pair temp1 = (BM25Pair) a;
+            BM25Pair temp2 = (BM25Pair) b;
+            return temp1.compareTo(temp2);
+            //return super.compare(a, b);
+        }
+        /*
+        @Override
+        public int compare(byte[] b1, int s1, int l1,
+                           byte[] b2, int s2, int l2) {
+
+            Float v1 = ByteBuffer.wrap(b1, s1, l1).getFloat();
+            Float v2 = ByteBuffer.wrap(b2, s2, l2).getFloat();
+
+            return v1.compareTo(v2) * (-1);
+        }
+        */
+    }
+
+
+    public static class BM25SortMapper extends Mapper<LongWritable, Text, BM25Pair, IntWritable>{
+        private NullWritable nullValue = NullWritable.get();
+        public void map(LongWritable offset, Text lineText, Context context)
+                throws IOException, InterruptedException {
+            String line = lineText.toString().trim();
+            String [] temp_value = line.split("\t");
+            BM25Pair temp_pair = new BM25Pair();
+            temp_pair.setTitle(temp_value[0]);
+            temp_pair.setBm25(Float.parseFloat(temp_value[1]));
+            context.write(temp_pair, new IntWritable(0));
         }
     }
 
+    public static class BM25SortReducer extends Reducer<BM25Pair, NullWritable, Text, Text>{
+        public void reduce(BM25Pair pair, Iterable<NullWritable> nullWritables, Context context)
+                throws IOException, InterruptedException {
+            context.write(new Text(pair.getTitle()), new Text(pair.getBm25().toString()));
+        }
+    }
     /**
      * Online run.
      * Calculate the query terms' BM25 scores.
@@ -265,6 +362,7 @@ public class PageRanking {
         System.out.println("Query:");
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
         String s = br.readLine();
+        s = s.toLowerCase();
 
         /**
          * Stage 1: BM25 Calculation
@@ -301,7 +399,7 @@ public class PageRanking {
         if (!job1.waitForCompletion(true)){
             System.exit(1);
         }
-        /**
+        /*
          * Stage 2: Conclusion
          */
         String s2_output_dir = args[1]+"/bm25";
@@ -309,12 +407,39 @@ public class PageRanking {
         job2.setJarByClass(PageRanking.class);
         MultipleInputs.addInputPath(job2, new Path(s1_output_dir+"/part*"), TextInputFormat.class, PageRanking.BM25Mapper.class);
         job2.setReducerClass(PageRanking.BM25ConReducer.class);
-        job2.setOutputKeyClass(Text.class);
-        job2.setOutputValueClass(FloatWritable.class);
+        job2.setMapOutputKeyClass(Text.class);
+        job2.setMapOutputValueClass(FloatWritable.class);
+
+        job2.setOutputKeyClass(FloatWritable.class);
+        job2.setOutputValueClass(Text.class);
+
         FileOutputFormat.setOutputPath(job2, new Path(s2_output_dir));
         if (!job2.waitForCompletion(true)){
             System.exit(1);
         }
+        /*
+         * Stage 3: Sorting
+         */
+        String s3_output_dir = args[1]+"/sorted";
+        Job job3 = Job.getInstance(conf, "Sorting");
+        job3.setJarByClass(PageRanking.class);
+        MultipleInputs.addInputPath(
+                job3,
+                new Path(s2_output_dir+"/part*"),
+                TextInputFormat.class,
+                PageRanking.BM25SortMapper.class);
+        job3.setSortComparatorClass(BM25Comparator.class);
+        //job3.setMapperClass(PageRanking.BM25SortMapper.class);
+        job3.setReducerClass(PageRanking.BM25SortReducer.class);
+        job3.setOutputValueClass(Text.class);
+        job3.setMapOutputValueClass(NullWritable.class);
+        FileOutputFormat.setOutputPath(job3, new Path(s3_output_dir));
+        job3.setNumReduceTasks(1);
+/*
+        if (!job3.waitForCompletion(true)){
+            System.exit(1);
+        }
+        */
     }
 
     /**
